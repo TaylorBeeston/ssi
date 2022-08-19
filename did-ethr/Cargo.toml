@@ -12,7 +12,7 @@ homepage = "https://github.com/spruceid/ssi/tree/main/did-ethr/"
 documentation = "https://docs.rs/did-ethr/"
 
 [features]
-default = ["ssi/ring"]
+default = []
 
 [dependencies]
 ssi = { version = "0.4", path = "../", default-features = false, features = ["secp256k1", "keccak"] }

@@ -152,6 +152,7 @@ pub const ZCAP_V1_CONTEXT: &str = "https://w3id.org/zcap/v1";
 pub const CACAO_ZCAP_V1_CONTEXT: &str = "https://demo.didkit.dev/2022/cacao-zcap/contexts/v1.json";
 pub const JFF_VC_EDU_PLUGFEST_2022_CONTEXT: &str =
     "https://w3c-ccg.github.io/vc-ed/plugfest-1-2022/jff-vc-edu-plugfest-1-context.json";
+pub const OB_V2_CONTEXT: &str = "https://openbadgespec.org/v2/context.json";
 
 lazy_static! {
     pub static ref CREDENTIALS_V1_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
@@ -331,7 +332,13 @@ lazy_static! {
     pub static ref JFF_VC_EDU_PLUGFEST_2022_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
         let jsonld = ssi_contexts::JFF_VC_EDU_PLUGFEST_2022;
         let doc = json::parse(jsonld).unwrap();
-        let iri = Iri::new(CACAO_ZCAP_V1_CONTEXT).unwrap();
+        let iri = Iri::new(JFF_VC_EDU_PLUGFEST_2022_CONTEXT).unwrap();
+        RemoteDocument::new(doc, iri)
+    };
+    pub static ref OB_V2_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
+        let jsonld = ssi_contexts::OBV2;
+        let doc = json::parse(jsonld).unwrap();
+        let iri = Iri::new(OB_V2_CONTEXT).unwrap();
         RemoteDocument::new(doc, iri)
     };
 }
@@ -389,6 +396,8 @@ impl Loader for StaticLoader {
                 JFF_VC_EDU_PLUGFEST_2022_CONTEXT => {
                     Ok(JFF_VC_EDU_PLUGFEST_2022_CONTEXT_DOCUMENT.clone())
                 }
+                OB_V2_CONTEXT => Ok(OB_V2_CONTEXT_DOCUMENT.clone()),
+
                 _ => Err(json_ld::ErrorCode::LoadingDocumentFailed.into()),
             }
         }
