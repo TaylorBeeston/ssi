@@ -11,6 +11,9 @@ repository = "https://github.com/spruceid/ssi/"
 homepage = "https://github.com/spruceid/ssi/tree/main/did-ethr/"
 documentation = "https://docs.rs/did-ethr/"
 
+[features]
+default = []
+
 [dependencies]
 ssi-dids = { path = "../ssi-dids", version = "0.1" }
 ssi-caips = { path = "../ssi-caips", version = "0.1", default-features = false, features = ["eip"] }

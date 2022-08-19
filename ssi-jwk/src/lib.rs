@@ -1,6 +1,7 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 use num_bigint::{BigInt, Sign};
+use rand_old::RngCore;
 use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
 use std::convert::TryFrom;
 use std::result::Result;
@@ -297,11 +298,69 @@ impl JWK {
         }
     }
 
-    #[cfg(feature = "secp256k1")]
+    #[cfg(feature = "ring")]
+    pub fn generate_ed25519_from_bytes(bytes: &[u8]) -> Result<JWK, Error> {
+        if bytes.len() != 32 {
+            return Err(Error::InvalidSeedLength(32, bytes.len()));
+        }
+
+        let rng = ring::test::rand::FixedSliceRandom { bytes };
+        let mut key_pkcs8 = ring::signature::Ed25519KeyPair::generate_pkcs8(&rng)?
+            .as_ref()
+            .to_vec();
+        // reference: ring/src/ec/curve25519/ed25519/signing.rs
+        let private_key = key_pkcs8[0x10..0x30].to_vec();
+        let public_key = key_pkcs8[0x35..0x55].to_vec();
+        key_pkcs8.zeroize();
+        Ok(JWK::from(Params::OKP(OctetParams {
+            curve: "Ed25519".to_string(),
+            public_key: Base64urlUInt(public_key),
+            private_key: Some(Base64urlUInt(private_key)),
+        })))
+    }
+
+    #[cfg(feature = "ed25519-dalek")]
+    pub fn generate_ed25519() -> Result<JWK, Error> {
+        let mut csprng = rand_old::rngs::OsRng {};
+        let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
+        Ok(JWK::from(Params::OKP(OctetParams {
+            curve: "Ed25519".to_string(),
+            public_key: Base64urlUInt(keypair.public.as_ref().to_vec()),
+            private_key: Some(Base64urlUInt(keypair.secret.as_ref().to_vec())),
+        })))
+    }
+
+    #[cfg(feature = "ed25519-dalek")]
+    pub fn generate_ed25519_from_bytes(bytes: &[u8]) -> Result<JWK, Error> {
+        let secret = ed25519_dalek::SecretKey::from_bytes(bytes)?;
+        let public: ed25519_dalek::PublicKey = (&secret).into();
+        Ok(JWK::from(Params::OKP(OctetParams {
+            curve: "Ed25519".to_string(),
+            public_key: Base64urlUInt(public.as_ref().to_vec()),
+            private_key: Some(Base64urlUInt(secret.as_ref().to_vec())),
+        })))
+    }
+
+    #[cfg(feature = "secp256k1"")]
     pub fn generate_secp256k1() -> Result<JWK, Error> {
-        let mut rng = rand::rngs::OsRng {};
-        let secret_key = k256::SecretKey::random(&mut rng);
-        let sk_bytes = zeroize::Zeroizing::new(secret_key.to_be_bytes().to_vec());
+        let mut bytes = [0u8; 32];
+
+        rand_old::rngs::OsRng.fill_bytes(&mut bytes);
+
+        let secret_key = k256::SecretKey::from_bytes(&bytes).unwrap();
+        // SecretKey zeroizes on drop
+        let sk_bytes: &[u8] = secret_key.as_scalar_bytes().as_ref();
+        let public_key = secret_key.public_key();
+        let mut ec_params = ECParams::try_from(&public_key)?;
+        ec_params.ecc_private_key = Some(Base64urlUInt(sk_bytes.to_vec()));
+        Ok(JWK::from(Params::EC(ec_params)))
+    }
+
+    #[cfg(feature = "secp256k1"")]
+    pub fn generate_secp256k1_from_bytes(bytes: &[u8]) -> Result<JWK, Error> {
+        let secret_key = k256::SecretKey::from_bytes(bytes).unwrap();
+        // SecretKey zeroizes on drop
+        let sk_bytes: &[u8] = secret_key.as_scalar_bytes().as_ref();
         let public_key = secret_key.public_key();
         let mut ec_params = ECParams::try_from(&public_key)?;
         ec_params.ecc_private_key = Some(Base64urlUInt(sk_bytes.to_vec()));
@@ -1210,6 +1269,21 @@ mod tests {
     #[cfg(feature = "ed25519")]
     fn generate_ed25519() {
         let _key = JWK::generate_ed25519().unwrap();
+    }
+
+    #[test]
+    fn generate_ed25519_from_bytes() {
+        let a32: JWK = serde_json::from_str(ED25519_A32_JSON).unwrap();
+        let byte_string = "a".repeat(32);
+        let generated_a_32 = JWK::generate_ed25519_from_bytes(byte_string.as_bytes()).unwrap();
+        assert_eq!(generated_a_32, a32);
+    }
+
+    #[test]
+    fn generate_ed25519_from_bytes_checks_length() {
+        let byte_string = "a".repeat(33);
+        let error = JWK::generate_ed25519_from_bytes(byte_string.as_bytes());
+        assert!(error.is_err());
     }
 
     #[test]
