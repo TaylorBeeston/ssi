@@ -20,7 +20,7 @@ use async_std::sync::RwLock;
 use futures::future::{BoxFuture, FutureExt};
 use iref::{Iri, IriBuf};
 use json::{array, JsonValue};
-use json_ld::{util::AsJson, Document, JsonContext, Loader, ProcessingMode, RemoteDocument};
+pub use json_ld::{util::AsJson, Document, JsonContext, Loader, ProcessingMode, RemoteDocument};
 
 #[derive(Debug, Clone)]
 pub enum RdfDirection {
