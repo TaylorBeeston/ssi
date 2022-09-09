@@ -19,7 +19,7 @@
       },
       "@id": "https://w3id.org/traceability#AdditionalProductCodeRegistrationCredential"
     },
-    "AgActivity": {
+    "AgricultureActivity": {
       "@context": {
         "activityDate": {
           "@id": "https://schema.org/DateTime"
@@ -30,7 +30,7 @@
         "actor": {
           "@id": "https://w3id.org/traceability#Person"
         },
-        "agProduct": {
+        "agricultureProduct": {
           "@id": "https://schema.org/ItemList"
         },
         "business": {
@@ -43,36 +43,47 @@
           "@id": "https://w3id.org/traceability#observation"
         }
       },
-      "@id": "https://w3id.org/traceability#AgActivity"
+      "@id": "https://w3id.org/traceability#AgricultureActivity"
     },
-    "AgInspectionReport": {
+    "AgricultureInspectionCommonInfo": {
       "@context": {
         "applicant": {
-          "@id": "https://w3id.org/traceability#dfn-entities"
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
         },
         "delegateOf": {
-          "@id": "https://schema.org/Organization"
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#specifiedOrganization"
         },
         "facility": {
-          "@id": "https://www.gs1.org/voc/Place"
+          "@id": "https://www.gs1.org/voc/location"
         },
-        "inspectionDate": {
-          "@id": "https://schema.org/DateTime"
+        "inspectionEnded": {
+          "@id": "https://schema.org/endDate"
         },
-        "inspectionType": {
-          "@id": "https://www.schema.org/value"
+        "inspectionStarted": {
+          "@id": "https://schema.org/startDate"
         },
         "inspector": {
           "@id": "https://w3id.org/traceability#Inspector"
+        },
+        "regulatoryAgency": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#specifiedOrganization"
+        }
+      },
+      "@id": "https://w3id.org/traceability#AgricultureInspectionCommonInfo"
+    },
+    "AgricultureInspectionGeneric": {
+      "@context": {
+        "commonInfo": {
+          "@id": "https://w3id.org/traceability#AgricultureInspectionCommonInfo"
+        },
+        "inspectionType": {
+          "@id": "https://www.schema.org/value"
         },
         "name": {
           "@id": "https://www.schema.org/name"
         },
         "observation": {
           "@id": "https://w3id.org/traceability#observation"
-        },
-        "regulatoryAgency": {
-          "@id": "https://schema.org/Organization"
         },
         "shipment": {
           "@id": "https://schema.org/ParcelDelivery"
@@ -81,11 +92,11 @@
           "@id": "https://www.schema.org/status"
         }
       },
-      "@id": "https://w3id.org/traceability#AgInspectionReport"
+      "@id": "https://w3id.org/traceability#AgricultureInspectionGeneric"
     },
-    "AgPackage": {
+    "AgriculturePackage": {
       "@context": {
-        "agProduct": {
+        "agricultureProduct": {
           "@id": "https://schema.org/ItemList"
         },
         "date": {
@@ -95,7 +106,7 @@
           "@id": "https://w3id.org/traceability#grade"
         },
         "harvest": {
-          "@id": "https://w3id.org/traceability#AgActivity"
+          "@id": "https://w3id.org/traceability#AgricultureActivity"
         },
         "labelImageHash": {
           "@id": "https://w3id.org/traceability#labelImageHash"
@@ -113,12 +124,12 @@
           "@id": "https://w3id.org/traceability#voicePickCode"
         }
       },
-      "@id": "https://w3id.org/traceability#AgPackage"
+      "@id": "https://w3id.org/traceability#AgriculturePackage"
     },
-    "AgParcelDelivery": {
+    "AgricultureParcelDelivery": {
       "@context": {
-        "AgPackage": {
-          "@id": "https://w3id.org/traceability#AgPackage"
+        "agriculturePackage": {
+          "@id": "https://w3id.org/traceability#AgriculturePackage"
         },
         "broker": {
           "@id": "https://schema.org/Organization"
@@ -163,9 +174,9 @@
           "@id": "https://schema.org/trackingNumber"
         }
       },
-      "@id": "https://w3id.org/traceability#AgParcelDelivery"
+      "@id": "https://w3id.org/traceability#AgricultureParcelDelivery"
     },
-    "AgProduct": {
+    "AgricultureProduct": {
       "@context": {
         "gtin": {
           "@id": "https://www.gs1.org/voc/gtin"
@@ -198,12 +209,12 @@
           "@id": "https://www.gs1.org/standards/barcodes/ean-upc"
         }
       },
-      "@id": "https://w3id.org/traceability#AgProduct"
+      "@id": "https://w3id.org/traceability#AgricultureProduct"
     },
     "BillOfLading": {
       "@context": {
         "billOfLadingNumber": {
-          "@id": "https://schema.org/identifier"
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#Bill_of_lading_number"
         },
         "bookingNumber": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#Consignment_identifier_carrier_assigned"
@@ -232,8 +243,11 @@
         "notify": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#notifyParty"
         },
-        "placeOfIssue": {
+        "portOfDischarge": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl3227/#Place_of_discharge"
+        },
+        "portOfLoading": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl3227/#Place_of_loading"
         },
         "relatedDocuments": {
           "@id": "https://schema.org/Purchase"
@@ -244,10 +258,10 @@
       },
       "@id": "https://w3id.org/traceability#BillOfLading"
     },
-    "BillOfLadingCertificate": {
+    "BillOfLadingCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#BillOfLadingCertificate"
+      "@id": "https://w3id.org/traceability#BillOfLadingCredential"
     },
     "BindingDataRegistrationCredential": {
       "@context": {
@@ -286,10 +300,23 @@
       },
       "@id": "https://schema.org/Brand"
     },
-    "CTPATCertificate": {
+    "CBP3461ImmediateDeliveryCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#CBP3461ImmediateDeliveryCredential"
+    },
+    "CBP7501EntrySummaryCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#CBP7501EntrySummaryCredential"
+    },
+    "CTPAT": {
       "@context": {
         "ctpatAccountNumber": {
           "@id": "https://w3id.org/traceability#ctpatAccountNumber"
+        },
+        "ctpatMember": {
+          "@id": "https://schema.org/member"
         },
         "dateOfLastValidation": {
           "@id": "https://schema.org/Date"
@@ -304,6 +331,11 @@
           "@id": "https://schema.org/industry"
         }
       },
+      "@id": "https://w3id.org/traceability#CTPAT"
+    },
+    "CTPATCertificate": {
+      "@context": {
+      },
       "@id": "https://w3id.org/traceability#CTPATCertificate"
     },
     "CargoItem": {
@@ -314,68 +346,11 @@
         "carrierBookingReference": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#carrierAssignedId"
         },
-        "chargeableWeight": {
-          "@id": "https://schema.org/weight"
-        },
-        "commodity": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#originCountry"
-        },
-        "commodityItemNumber": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#discountIndicator"
-        },
-        "descriptionOfPackagesAndGoods": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#natureIdentificationCargo"
-        },
-        "grossVolume": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossVolumeMeasure"
-        },
-        "grossWeight": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossWeightMeasure"
-        },
-        "grossWeightUnit": {
-          "@id": "https://schema.org/unitCode"
-        },
-        "itemQuantity": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#tradeLineItemQuantity"
-        },
-        "manufacturer": {
-          "@id": "https://schema.org/Organization"
-        },
-        "marksAndNumbers": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#ShippingMarks"
-        },
-        "natureAndVolumeOfGoods": {
-          "@id": "https://schema.org/description"
-        },
-        "netWeight": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#netWeightMeasure"
-        },
         "numberOfPackages": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
         },
-        "numberOfPieces": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
-        },
-        "orderNumber": {
-          "@id": "https://schema.org/orderNumber"
-        },
         "packageCode": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageTypeCode"
-        },
-        "packageQuantity": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
-        },
-        "rateCharge": {
-          "@id": "https://schema.org/price"
-        },
-        "rateClass": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#freightChargeTariffClassCode"
-        },
-        "total": {
-          "@id": "https://schema.org/totalPrice"
-        },
-        "transportPackage": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#Package"
         },
         "volume": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossVolumeMeasure"
@@ -390,7 +365,7 @@
           "@id": "https://schema.org/unitCode"
         }
       },
-      "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#ConsignmentItem"
+      "@id": "https://api.swaggerhub.com/domains/dcsaorg/DCSA_DOMAIN/1.0.1#/components/schemas/cargoItem"
     },
     "CargoLineItem": {
       "@context": {
@@ -409,16 +384,16 @@
       },
       "@id": "https://w3id.org/traceability#CargoLineItem"
     },
-    "CertificateOfOrigin": {
+    "CertificationOfOrigin": {
       "@context": {
-        "countryOfOrigin": {
-          "@id": "https://w3id.org/traceability#countryOfOrigin"
-        },
         "dateOfExport": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#exportExitDateTime"
+        },
+        "manufacturingCountry": {
+          "@id": "https://w3id.org/traceability#manufacturingCountry"
         }
       },
-      "@id": "https://w3id.org/traceability#CertificateOfOrigin"
+      "@id": "https://w3id.org/traceability#CertificationOfOrigin"
     },
     "ChargeDeclaration": {
       "@context": {
@@ -466,10 +441,10 @@
       },
       "@id": "https://w3id.org/traceability#ChemicalProperty"
     },
-    "CommercialInvoiceCertificate": {
+    "CommercialInvoiceCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#CommercialInvoiceCertificate"
+      "@id": "https://w3id.org/traceability#CommercialInvoiceCredential"
     },
     "CommissionEvent": {
       "@context": {
@@ -479,8 +454,8 @@
         "place": {
           "@id": "https://schema.org/Place"
         },
-        "product": {
-          "@id": "https://schema.org/Product"
+        "products": {
+          "@id": "https://w3c-ccg.github.io/hashlink/#hl-url-params"
         }
       },
       "@id": "https://w3id.org/traceability#CommissionEvent"
@@ -499,11 +474,72 @@
       },
       "@id": "https://w3id.org/traceability#Commodity"
     },
+    "ConsignmentItem": {
+      "@context": {
+        "commodity": {
+          "@id": "https://w3id.org/traceability#Commodity"
+        },
+        "countryOfOrigin": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#originCountry"
+        },
+        "descriptionOfPackagesAndGoods": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#natureIdentificationCargo"
+        },
+        "grossVolume": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossVolumeMeasure"
+        },
+        "grossWeight": {
+          "@id": "https://schema.org/weight"
+        },
+        "manufacturer": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#manufacturerParty"
+        },
+        "marksAndNumbers": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#ShippingMarks"
+        },
+        "netWeight": {
+          "@id": "https://schema.org/weight"
+        },
+        "packageQuantity": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
+        }
+      },
+      "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#ConsignmentItem"
+    },
+    "ConsignmentRatingDetail": {
+      "@context": {
+        "chargeableWeight": {
+          "@id": "https://schema.org/weight"
+        },
+        "commodityItemNumber": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#discountIndicator"
+        },
+        "grossWeight": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossWeightMeasure"
+        },
+        "grossWeightUnit": {
+          "@id": "https://schema.org/unitCode"
+        },
+        "natureAndVolumeOfGoods": {
+          "@id": "https://schema.org/description"
+        },
+        "numberOfPieces": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
+        },
+        "rateCharge": {
+          "@id": "https://schema.org/price"
+        },
+        "rateClass": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#freightChargeTariffClassCode"
+        },
+        "total": {
+          "@id": "https://schema.org/totalPrice"
+        }
+      },
+      "@id": "https://w3id.org/traceability#ConsignmentRatingDetail"
+    },
     "ContactPoint": {
       "@context": {
-        "address": {
-          "@id": "https://schema.org/PostalAddress"
-        },
         "email": {
           "@id": "https://schema.org/email"
         },
@@ -512,6 +548,9 @@
         },
         "phoneNumber": {
           "@id": "https://schema.org/telephone"
+        },
+        "place": {
+          "@id": "https://w3id.org/traceability#place"
         }
       },
       "@id": "https://schema.org/ContactPoint"
@@ -539,10 +578,10 @@
       },
       "@id": "https://w3id.org/traceability#CrudeOilProduct"
     },
-    "CrudeOilProductCertificate": {
+    "CrudeOilProductCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#CrudeOilProductCertificate"
+      "@id": "https://w3id.org/traceability#CrudeOilProductCredential"
     },
     "Customer": {
       "@context": {
@@ -575,8 +614,8 @@
         "consigneesFreightForwarder": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#freightForwarderParty"
         },
-        "description": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#description"
+        "firstNotify": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#notifyParty"
         },
         "invoicePayableAt": {
           "@id": "https://api.swaggerhub.com/domains/dcsaorg/DCSA_DOMAIN/1.0.1#/components/schemas/invoicePayableAt"
@@ -587,11 +626,14 @@
         "invoicePayerShipper": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#shipperParty"
         },
-        "notify": {
+        "otherNotify": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#notifyParty"
         },
         "preCarriageUnderShippersResponsibility": {
           "@id": "https://api.swaggerhub.com/domains/dcsaorg/DCSA_DOMAIN/1.0.1#/components/schemas/preCarriageUnderShippersResponsibility"
+        },
+        "secondNotify": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#notifyParty"
         },
         "shipmentLocations": {
           "@id": "https://api.swaggerhub.com/domains/dcsaorg/DOCUMENTATION_DOMAIN/1.0.0#/components/schemas/shipmentLocation"
@@ -614,10 +656,10 @@
       },
       "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#Instructions"
     },
-    "DCSAShippingInstructionCertificate": {
+    "DCSAShippingInstructionCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#DCSAShippingInstructionCertificate"
+      "@id": "https://w3id.org/traceability#DCSAShippingInstructionCredential"
     },
     "DCSATransportDocument": {
       "@context": {
@@ -678,10 +720,103 @@
       },
       "@id": "https://api.swaggerhub.com/domains/dcsaorg/DCSA_DOMAIN/1.0.1#/components/schemas/transportDocument"
     },
-    "DCSATransportDocumentCertificate": {
+    "DCSATransportDocumentCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#DCSATransportDocumentCertificate"
+      "@id": "https://w3id.org/traceability#DCSATransportDocumentCredential"
+    },
+    "DeMinimisShipment": {
+      "@context": {
+        "buyer": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#buyerParty"
+        },
+        "enhancedProductDescription": {
+          "@id": "https://w3id.org/traceability#enhancedProductDescription"
+        },
+        "finalDeliverTo": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#shipToParty"
+        },
+        "houseBillOfLadingNumber": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#House_bill_of_lading_number"
+        },
+        "knownCarrierCustomerFlag": {
+          "@id": "https://w3id.org/traceability#knownCarrierCustomerFlag"
+        },
+        "knownMarketplaceSellerFlag": {
+          "@id": "https://w3id.org/traceability#knownMarketplaceSellerFlag"
+        },
+        "listedPriceOnMarketplace": {
+          "@id": "https://schema.org/price"
+        },
+        "marketplaceSellerAccountNumber": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#Account_number"
+        },
+        "masterBillOfLadingNumber": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#Bill_of_lading_number"
+        },
+        "modeOfTransportation": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#mode"
+        },
+        "originatorCode": {
+          "@id": "https://w3id.org/traceability#originatorCode"
+        },
+        "participantFilerType": {
+          "@id": "https://w3id.org/traceability#participantFilerType"
+        },
+        "productPicture": {
+          "@id": "https://schema.org/image"
+        },
+        "seller": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#sellerParty"
+        },
+        "shipmentInitiator": {
+          "@id": "https://w3id.org/traceability#shipmentInitiator"
+        },
+        "shipmentSecurityScan": {
+          "@id": "https://w3id.org/traceability#shipmentSecurityScan"
+        },
+        "shipmentTrackingNumber": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#shipmentIdentificationId"
+        }
+      },
+      "@id": "https://w3id.org/traceability#DeMinimisShipment"
+    },
+    "DeMinimisShipmentCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#DeMinimisExemptionCertificate"
+    },
+    "DeliverySchedule": {
+      "@context": {
+        "batchNumber": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#batchIdentificationId"
+        },
+        "commodity": {
+          "@id": "https://w3id.org/traceability#Commodity"
+        },
+        "consignee": {
+          "@id": "https://schema.org/Organization"
+        },
+        "consignor": {
+          "@id": "https://schema.org/Organization"
+        },
+        "deliveryDate": {
+          "@id": "https://schema.org/arrivalTime"
+        },
+        "injectionDate": {
+          "@id": "https://schema.org/departureTime"
+        },
+        "injectionVolume": {
+          "@id": "https://schema.org/Quantity"
+        },
+        "place": {
+          "@id": "https://schema.org/Place"
+        },
+        "transporter": {
+          "@id": "https://schema.org/Organization"
+        }
+      },
+      "@id": "https://w3id.org/traceability#DeliverySchedule"
     },
     "DocumentVerificationEvidence": {
       "@context": {
@@ -697,6 +832,247 @@
       },
       "@id": "https://w3id.org/traceability#DocumentVerificationEvidence"
     },
+    "EDDShape": {
+      "@context": {
+        "abundance": {
+          "@id": "https://schema.org/description"
+        },
+        "approximateQuantity": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismQuantity"
+        },
+        "centroidType": {
+          "@id": "https://schema.org/polygon"
+        },
+        "commonName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/vernacularName"
+        },
+        "coordinateUncertainty": {
+          "@id": "http://rs.tdwg.org/dwc/terms/coordinateUncertaintyInMeters"
+        },
+        "dateEntered": {
+          "@id": "http://rs.tdwg.org/dwc/terms/eventDate"
+        },
+        "dateUncertaintyDays": {
+          "@id": "https://schema.org/value"
+        },
+        "dateUpdated": {
+          "@id": "http://rs.tdwg.org/dwc/terms/eventDate"
+        },
+        "density": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementRemarks"
+        },
+        "grossAreaAcres": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "habitat": {
+          "@id": "http://rs.tdwg.org/dwc/terms/habitat"
+        },
+        "identificationCredibility": {
+          "@id": "http://rs.tdwg.org/dwc/terms/identificationRemarks"
+        },
+        "incidence": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "infestedAreaAcres": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "location": {
+          "@id": "https://schema.org/location"
+        },
+        "managementStatus": {
+          "@id": "https://schema.org/status"
+        },
+        "mapResources": {
+          "@id": "https://w3id.org/traceability#MapResource"
+        },
+        "meta": {
+          "@id": "https://w3id.org/traceability#EDDShapeMeta"
+        },
+        "naDatum": {
+          "@id": "http://rs.tdwg.org/dwc/terms/geodeticDatum"
+        },
+        "observationDate": {
+          "@id": "http://rs.tdwg.org/dwc/terms/eventDate"
+        },
+        "occurrenceStatus": {
+          "@id": "https://schema.org/value"
+        },
+        "percentCover": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "persistentId": {
+          "@id": "http://rs.tdwg.org/dwc/terms/occurrenceID"
+        },
+        "quantity": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismQuantity"
+        },
+        "quantityUnits": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismQuantityType"
+        },
+        "recordBasis": {
+          "@id": "http://rs.tdwg.org/dwc/terms/samplingProtocol"
+        },
+        "reporter": {
+          "@id": "https://schema.org/name"
+        },
+        "reviewer": {
+          "@id": "http://rs.tdwg.org/dwc/terms/identifiedBy"
+        },
+        "scientificName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/scientificName"
+        },
+        "severity": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "siteName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/locationID"
+        },
+        "status": {
+          "@id": "https://schema.org/description"
+        },
+        "subjectNativity": {
+          "@id": "http://rs.tdwg.org/dwc/terms/establishmentMeans"
+        },
+        "surveyor": {
+          "@id": "http://rs.tdwg.org/dwc/terms/recordedBy"
+        },
+        "uuid": {
+          "@id": "http://rs.tdwg.org/dwc/terms/dateIdentified"
+        },
+        "verificationMethod": {
+          "@id": "http://rs.tdwg.org/dwc/terms/identificationRemarks"
+        },
+        "verified": {
+          "@id": "http://rs.tdwg.org/dwc/terms/identificationVerificationStatus"
+        },
+        "visitType": {
+          "@id": "https://schema.org/description"
+        }
+      },
+      "@id": "https://w3id.org/traceability#EDDShape"
+    },
+    "EDDShapeMeta": {
+      "@context": {
+        "collectionTimeMinutes": {
+          "@id": "https://schema.org/activityDuration"
+        },
+        "comments": {
+          "@id": "http://rs.tdwg.org/dwc/terms/eventRemarks"
+        },
+        "dataCollectionMethod": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementMethod"
+        },
+        "hostDamage": {
+          "@id": "https://schema.org/description"
+        },
+        "hostName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/vernacularName"
+        },
+        "hostPhenology": {
+          "@id": "http://rs.tdwg.org/dwc/terms/lifeStage"
+        },
+        "hostScientificName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/scientificName"
+        },
+        "largestOrganismSampled": {
+          "@id": "https://schema.org/size"
+        },
+        "lifeStatus": {
+          "@id": "http://rs.tdwg.org/dwc/terms/occurrenceRemarks"
+        },
+        "localOwnership": {
+          "@id": "http://rs.tdwg.org/dwc/terms/locality"
+        },
+        "locality": {
+          "@id": "http://rs.tdwg.org/dwc/terms/locationRemarks"
+        },
+        "method": {
+          "@id": "http://rs.tdwg.org/dwc/terms/locationRemarks"
+        },
+        "museum": {
+          "@id": "https://schema.org/name"
+        },
+        "museumRecord": {
+          "@id": "http://rs.tdwg.org/dwc/terms/catalogNumber"
+        },
+        "numberCollected": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementRemarks"
+        },
+        "numberTraps": {
+          "@id": "http://rs.tdwg.org/dwc/terms/samplingEffort"
+        },
+        "observationId": {
+          "@id": "http://rs.tdwg.org/dwc/terms/identifiedBy"
+        },
+        "originalRecordId": {
+          "@id": "http://rs.tdwg.org/dwc/terms/recordNumber"
+        },
+        "originalReportedName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/verbatimIdentification"
+        },
+        "phenology": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismRemarks"
+        },
+        "plantsTreated": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismQuantity"
+        },
+        "populationStatus": {
+          "@id": "http://rs.tdwg.org/dwc/terms/degreeOfEstablishment"
+        },
+        "publicReviewerComments": {
+          "@id": "http://rs.tdwg.org/dwc/terms/identificationRemarks"
+        },
+        "recordOwner": {
+          "@id": "https://schema.org/name"
+        },
+        "recordSourceType": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementRemarks"
+        },
+        "reference": {
+          "@id": "http://rs.tdwg.org/dwc/terms/associatedReferences"
+        },
+        "sex": {
+          "@id": "http://rs.tdwg.org/dwc/terms/sex"
+        },
+        "shapeType": {
+          "@id": "https://schema.org/description"
+        },
+        "smallestOrganismSampled": {
+          "@id": "https://schema.org/size"
+        },
+        "substrate": {
+          "@id": "http://rs.tdwg.org/dwc/terms/occurrenceRemarks"
+        },
+        "targetCount": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismQuantity"
+        },
+        "targetName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismName"
+        },
+        "targetRange": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismQuantity"
+        },
+        "trapType": {
+          "@id": "http://rs.tdwg.org/dwc/terms/samplingProtocol"
+        },
+        "treatmentArea": {
+          "@id": "https://schema.org/value"
+        },
+        "treatmentComments": {
+          "@id": "http://rs.tdwg.org/dwc/terms/eventRemarks"
+        },
+        "voucher": {
+          "@id": "http://rs.tdwg.org/dwc/terms/disposition"
+        },
+        "waterBodyName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/waterBody"
+        },
+        "waterBodyType": {
+          "@id": "http://rs.tdwg.org/dwc/terms/occurrenceRemarks"
+        }
+      },
+      "@id": "https://w3id.org/traceability#EDDShapeMeta"
+    },
     "Entity": {
       "@context": {
         "address": {
@@ -704,6 +1080,12 @@
         },
         "email": {
           "@id": "https://schema.org/email"
+        },
+        "entityType": {
+          "@id": "https://schema.org/additionalType"
+        },
+        "faxNumber": {
+          "@id": "https://schema.org/faxNumber"
         },
         "legalName": {
           "@id": "https://schema.org/legalName"
@@ -728,11 +1110,20 @@
         "billOfLadingNumber": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#Bill_of_lading_number"
         },
+        "bondType": {
+          "@id": "https://w3id.org/traceability#bondType"
+        },
         "consigneeNumber": {
           "@id": "https://schema.org/identifier"
         },
         "countryOfOrigin": {
           "@id": "https://w3id.org/traceability#countryOfOrigin"
+        },
+        "declarationOfImporter": {
+          "@id": "https://w3id.org/traceability#declarationOfImporter"
+        },
+        "descriptionOfMerchandise": {
+          "@id": "https://w3id.org/traceability#descriptionOfMerchandise"
         },
         "duty": {
           "@id": "https://schema.org/MonetaryAmount"
@@ -779,11 +1170,11 @@
         "missingDocuments": {
           "@id": "https://w3id.org/traceability#missingDocuments"
         },
-        "null": {
-          "@id": "https://w3id.org/traceability#bondType"
-        },
         "other": {
           "@id": "https://schema.org/MonetaryAmount"
+        },
+        "otherFeeSummary": {
+          "@id": "https://w3id.org/traceability#otherFeeSummary"
         },
         "portCode": {
           "@id": "https://schema.org/Place"
@@ -796,6 +1187,9 @@
         },
         "referenceNumber": {
           "@id": "https://w3id.org/traceability#referenceNumber"
+        },
+        "summaryDate": {
+          "@id": "https://schema.org/Date"
         },
         "suretyCode": {
           "@id": "https://w3id.org/traceability#suretyCode"
@@ -818,15 +1212,16 @@
       },
       "@id": "https://w3id.org/traceability#EntrySummary"
     },
-    "EntrySummaryCertificate": {
-      "@context": {
-      },
-      "@id": "https://w3id.org/traceability#EntrySummaryCertificate"
-    },
     "EntrySummaryLineItem": {
       "@context": {
         "adCvdNumber": {
           "@id": "https://w3id.org/traceability#adCvdNumber"
+        },
+        "adCvdRate": {
+          "@id": "https://w3id.org/traceability#adCvdRate"
+        },
+        "agriculturalLicenseNumber": {
+          "@id": "https://w3id.org/traceability#agriculturalLicenseNumber"
         },
         "categoryNumber": {
           "@id": "https://w3id.org/traceability#categoryNumber"
@@ -837,11 +1232,20 @@
         "commodity": {
           "@id": "https://w3id.org/traceability#Commodity"
         },
+        "dutyAndIRTax": {
+          "@id": "https://w3id.org/traceability#dutyAndIRTax"
+        },
         "enteredValue": {
           "@id": "https://schema.org/MonetaryAmount"
         },
         "grossWeight": {
           "@id": "https://schema.org/weight"
+        },
+        "htsRate": {
+          "@id": "https://w3id.org/traceability#htsRate"
+        },
+        "ircRate": {
+          "@id": "https://w3id.org/traceability#ircRate"
         },
         "manifestQuantity": {
           "@id": "https://w3id.org/traceability#manifestQuantity"
@@ -854,6 +1258,9 @@
         },
         "relationship": {
           "@id": "https://schema.org/MonetaryAmount"
+        },
+        "visaNumber": {
+          "@id": "https://w3id.org/traceability#visaNumber"
         }
       },
       "@id": "https://w3id.org/traceability#EntrySummaryLineItem"
@@ -876,10 +1283,361 @@
           "@id": "https://w3id.org/traceability#place"
         },
         "products": {
-          "@id": "https://schema.org/Product"
+          "@id": "https://w3c-ccg.github.io/hashlink/#hl-url-params"
         }
       },
       "@id": "https://schema.org/Event"
+    },
+    "ExternalResource": {
+      "@context": {
+        "hash": {
+          "@id": "https://schema.org/sha256"
+        },
+        "uri": {
+          "@id": "https://schema.org/contentUrl"
+        }
+      },
+      "@id": "https://w3id.org/traceability#ExternalResource"
+    },
+    "FSMAAbstractKDE": {
+      "@context": {
+        "name": {
+          "@id": "https://schema.org/propertyID"
+        },
+        "value": {
+          "@id": "https://schema.org/value"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+    },
+    "FSMACreatingCTE": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "dateCompleted": {
+          "@id": "https://schema.org/endDate"
+        },
+        "food": {
+          "@id": "https://w3id.org/traceability#FSMAProduct"
+        },
+        "location": {
+          "@id": "https://schema.org/location"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMACreatingCTE"
+    },
+    "FSMACreatingCTECredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#FSMACreatingCTECredential"
+    },
+    "FSMAFirstReceiverData": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "coolingDate": {
+          "@id": "https://schema.org/endDate"
+        },
+        "coolingLocation": {
+          "@id": "https://schema.org/location"
+        },
+        "harvestDate": {
+          "@id": "https://schema.org/endDate"
+        },
+        "originatorLocation": {
+          "@id": "https://schema.org/location"
+        },
+        "packingDate": {
+          "@id": "https://schema.org/endDate"
+        },
+        "packingLocation": {
+          "@id": "https://schema.org/location"
+        },
+        "traceabilityLot": {
+          "@id": "https://w3id.org/traceability#FSMATraceabilityLot"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMAFirstReceiverData"
+    },
+    "FSMAFirstReceiverDataCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#FSMAFirstReceiverDataCredential"
+    },
+    "FSMAGrowingCTE": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "growingAreaCoordinates": {
+          "@id": "https://w3id.org/traceability#GeoCoordinates"
+        },
+        "traceabilityLot": {
+          "@id": "https://w3id.org/traceability#FSMATraceabilityLot"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMAGrowingCTE"
+    },
+    "FSMAGrowingCTECredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#FSMAGrowingCTECredential"
+    },
+    "FSMAProduct": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "quantity": {
+          "@id": "https://schema.org/value"
+        },
+        "traceabilityLot": {
+          "@id": "https://w3id.org/traceability#FSMATraceabilityLot"
+        },
+        "unit": {
+          "@id": "https://schema.org/unitText"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMAProduct"
+    },
+    "FSMAReceivingCTE": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "dateReceived": {
+          "@id": "https://schema.org/endDate"
+        },
+        "shipment": {
+          "@id": "https://w3id.org/traceability#FSMAShipment"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMAReceivingCTE"
+    },
+    "FSMAReceivingCTECredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#FSMAReceivingCTECredential"
+    },
+    "FSMAShipment": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "from": {
+          "@id": "https://schema.org/fromLocation"
+        },
+        "product": {
+          "@id": "https://w3id.org/traceability#FSMAProduct"
+        },
+        "to": {
+          "@id": "https://schema.org/toLocation"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMAShipment"
+    },
+    "FSMAShippingCTE": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "dateShipped": {
+          "@id": "https://schema.org/startDate"
+        },
+        "shipment": {
+          "@id": "https://w3id.org/traceability#FSMAShipment"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMAShippingCTE"
+    },
+    "FSMAShippingCTECredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#FSMAShippingCTECredential"
+    },
+    "FSMATraceabilityLot": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "lotCode": {
+          "@id": "https://www.gs1.org/voc/hasBatchLotNumber"
+        },
+        "lotCodeAssignmentMethod": {
+          "@id": "https://schema.org/description"
+        },
+        "lotCodeGeneratorLocation": {
+          "@id": "https://schema.org/location"
+        },
+        "lotCodeGeneratorPOC": {
+          "@id": "https://schema.org/contactPoint"
+        },
+        "lotType": {
+          "@id": "https://schema.org/additionalType"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMATraceabilityLot"
+    },
+    "FSMATransformingCTE": {
+      "@context": {
+        "additionalData": {
+          "@id": "https://w3id.org/traceability#FSMAAbstractKDE"
+        },
+        "dateCompleted": {
+          "@id": "https://schema.org/endDate"
+        },
+        "foodProduced": {
+          "@id": "https://w3id.org/traceability#FSMAProduct"
+        },
+        "foodUsed": {
+          "@id": "https://w3id.org/traceability#FSMAProduct"
+        },
+        "locationTransformed": {
+          "@id": "https://schema.org/location"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FSMATransformingCTE"
+    },
+    "FSMATransformingCTECredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#FSMATransformingCTECredential"
+    },
+    "FoodGradeInspection": {
+      "@context": {
+        "carrierTypeName": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#utilizedTransportEquipment"
+        },
+        "commonInfo": {
+          "@id": "https://w3id.org/traceability#AgricultureInspectionCommonInfo"
+        },
+        "doorsOpen": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#reportedStatus"
+        },
+        "estimatedCharges": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#applicableServiceCharge"
+        },
+        "generalRemarks": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#remarks"
+        },
+        "loadingStatus": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#reportedStatus"
+        },
+        "lots": {
+          "@id": "https://w3id.org/traceability#FoodGradeInspectionLot"
+        },
+        "refrigerationUnitOn": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#reportedStatus"
+        },
+        "shipment": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#transportPackage"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodGradeInspection"
+    },
+    "FoodGradeInspectionCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#FoodGradeInspectionCredential"
+    },
+    "FoodGradeInspectionDefect": {
+      "@context": {
+        "averageDefects": {
+          "@id": "https://qudt.org/vocab/unit/PERCENT"
+        },
+        "damage": {
+          "@id": "https://qudt.org/vocab/unit/PERCENT"
+        },
+        "offsizeDefect": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#damageRemarks"
+        },
+        "seriousDamage": {
+          "@id": "https://qudt.org/vocab/unit/PERCENT"
+        },
+        "verySeriousDamage": {
+          "@id": "https://qudt.org/vocab/unit/PERCENT"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodGradeInspectionDefect"
+    },
+    "FoodGradeInspectionLot": {
+      "@context": {
+        "agricultureProduct": {
+          "@id": "https://w3id.org/traceability#AgricultureProduct"
+        },
+        "brandMarkings": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#brandName"
+        },
+        "countInspected": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#remark"
+        },
+        "defects": {
+          "@id": "https://w3id.org/traceability#FoodGradeInspectionDefect"
+        },
+        "grade": {
+          "@id": "https://w3id.org/traceability#FoodGradeInspectionResult"
+        },
+        "lotIdentifier": {
+          "@id": "https://www.gs1.org/voc/hasBatchLotNumber"
+        },
+        "maxTemperature": {
+          "@id": "https://schema.org/measuredValue"
+        },
+        "minTemperature": {
+          "@id": "https://schema.org/measuredValue"
+        },
+        "numberContainers": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
+        },
+        "remarks": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#remark"
+        },
+        "samples": {
+          "@id": "https://w3id.org/traceability#FoodGradeInspectionSample"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodGradeInspectionLot"
+    },
+    "FoodGradeInspectionResult": {
+      "@context": {
+        "details": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#additionalInformationNote"
+        },
+        "gradeInspected": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#standard"
+        },
+        "requirementsMet": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#assertion"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodGradeInspectionResult"
+    },
+    "FoodGradeInspectionSample": {
+      "@context": {
+        "sampleProperties": {
+          "@id": "https://w3id.org/traceability#FoodGradeInspectionSampleProperty"
+        },
+        "sampleSizeUnits": {
+          "@id": "https://schema.org/unitText"
+        },
+        "sampleSizeValue": {
+          "@id": "https://schema.org/value"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodGradeInspectionSample"
+    },
+    "FoodGradeInspectionSampleProperty": {
+      "@context": {
+        "propertyName": {
+          "@id": "https://schema.org/name"
+        },
+        "propertyValue": {
+          "@id": "https://schema.org/value"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodGradeInspectionSampleProperty"
     },
     "ForeignChargeDeclaration": {
       "@context": {
@@ -897,14 +1655,14 @@
     },
     "FreightManifest": {
       "@context": {
+        "billsOfLading": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#manifestRelatedDocument"
+        },
         "carrier": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#carrierParty"
         },
         "carrierCode": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#Standard_Carrier_Alpha_Code_(SCAC)_number"
-        },
-        "relatedDocuments": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#manifestRelatedDocument"
         },
         "transportMeans": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#transportMeans"
@@ -918,10 +1676,129 @@
       },
       "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#manifestRelatedDocument"
     },
-    "FreightManifestCertificate": {
+    "FreightManifestCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#FreightManifestCertificate"
+      "@id": "https://w3id.org/traceability#FreightManifestCredential"
+    },
+    "GAPCorrectiveActionReport": {
+      "@context": {
+        "affirmingRepresentative": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
+        },
+        "correctiveAction": {
+          "@id": "https://schema.org/potentialAction"
+        },
+        "nonconformityDescription": {
+          "@id": "https://schema.org/description"
+        },
+        "notifiedCompanyStaff": {
+          "@id": "https://schema.org/actionStatus"
+        }
+      },
+      "@id": "https://w3id.org/traceability#GAPCorrectiveActionReport"
+    },
+    "GAPInspection": {
+      "@context": {
+        "GAPPlus": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#documentTypeCode"
+        },
+        "additionalComments": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#remarks"
+        },
+        "commoditiesCovered": {
+          "@id": "https://schema.org/ItemList"
+        },
+        "commoditiesProduced": {
+          "@id": "https://schema.org/ItemList"
+        },
+        "commonInfo": {
+          "@id": "https://w3id.org/traceability#AgricultureInspectionCommonInfo"
+        },
+        "dateReviewed": {
+          "@id": "https://www.gs1.org/voc/certificationAuditDate"
+        },
+        "distributeTo": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
+        },
+        "fieldOpsHarvestingScope": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        },
+        "harvestCompany": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
+        },
+        "logoUseScope": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        },
+        "meetsCriteria": {
+          "@id": "https://www.gs1.org/voc/certificationStatus"
+        },
+        "operationDescription": {
+          "@id": "https://schema.org/description"
+        },
+        "otherContractors": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
+        },
+        "personsInterviewed": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
+        },
+        "postHarvestOpsScope": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        },
+        "requestedBy": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
+        },
+        "requirementResults": {
+          "@id": "https://w3id.org/traceability#GAPRequirementResult"
+        },
+        "reviewingOfficial": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
+        },
+        "subjectToRule": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#regulationConformityId"
+        },
+        "tomatoGreenhouseScope": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        },
+        "tomatoPackingDistributionScope": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        },
+        "tomatoPackinghouseScope": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        },
+        "tomatoProdHarvestingScope": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        },
+        "totalArea": {
+          "@id": "https://www.gs1.org/voc/grossArea"
+        },
+        "usesLogo": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#assertion"
+        }
+      },
+      "@id": "https://w3id.org/traceability#GAPInspection"
+    },
+    "GAPInspectionCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#GAPInspectionCredential"
+    },
+    "GAPRequirementResult": {
+      "@context": {
+        "auditorComments": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#remarks"
+        },
+        "correctiveActionReport": {
+          "@id": "https://w3id.org/traceability#GAPCorrectiveActionReport"
+        },
+        "requirementNumber": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#standard"
+        },
+        "resultCode": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#assertionCode"
+        }
+      },
+      "@id": "https://w3id.org/traceability#GAPRequirementResult"
     },
     "GeoCoordinates": {
       "@context": {
@@ -999,10 +1876,10 @@
       },
       "@id": "https://w3id.org/traceability#HouseBillOfLading"
     },
-    "HouseBillOfLadingCertificate": {
+    "HouseBillOfLadingCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#HouseBillOfLadingCertificate"
+      "@id": "https://w3id.org/traceability#HouseBillOfLadingCredential"
     },
     "IATAAirWaybill": {
       "@context": {
@@ -1135,10 +2012,10 @@
       },
       "@id": "https://w3id.org/traceability#IATAAirWaybill"
     },
-    "IATAAirWaybillCertificate": {
+    "IATAAirWaybillCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#IATAAirWaybillCertificate"
+      "@id": "https://w3id.org/traceability#IATAAirWaybillCredential"
     },
     "ImmediateDelivery": {
       "@context": {
@@ -1156,6 +2033,9 @@
         },
         "bolType": {
           "@id": "https://w3id.org/traceability#bolType"
+        },
+        "bondType": {
+          "@id": "https://w3id.org/traceability#bondType"
         },
         "bondValue": {
           "@id": "https://schema.org/MonetaryAmount"
@@ -1199,9 +2079,6 @@
         "nonAMS": {
           "@id": "https://w3id.org/traceability#nonAMS"
         },
-        "null": {
-          "@id": "https://w3id.org/traceability#bondType"
-        },
         "originatingWarehouseEntryNumber": {
           "@id": "https://w3id.org/traceability#originatingWarehouseEntryNumber"
         },
@@ -1238,11 +2115,6 @@
       },
       "@id": "https://w3id.org/traceability#ImmediateDelivery"
     },
-    "ImmediateDeliveryCertificate": {
-      "@context": {
-      },
-      "@id": "https://w3id.org/traceability#ImmediateDeliveryCertificate"
-    },
     "ImmediateDeliveryEntity": {
       "@context": {
         "assignedIdentifier": {
@@ -1269,6 +2141,9 @@
     "ImmediateDeliveryLineItem": {
       "@context": {
         "commodity": {
+          "@id": "https://w3id.org/traceability#Commodity"
+        },
+        "countryOfOrigin": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#originCountry"
         },
         "freeTradeZoneFilingDate": {
@@ -1321,10 +2196,10 @@
       },
       "@id": "https://w3id.org/traceability#ImporterSecurityFiling"
     },
-    "ImporterSecurityFilingCertificate": {
+    "ImporterSecurityFilingCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#ImporterSecurityFilingCertificate"
+      "@id": "https://w3id.org/traceability#ImporterSecurityFilingCredential"
     },
     "Inbond": {
       "@context": {
@@ -1384,8 +2259,14 @@
         "comment": {
           "@id": "https://schema.org/comment"
         },
+        "inspectors": {
+          "@id": "https://schema.org/Person"
+        },
         "observation": {
           "@id": "https://schema.org/ItemList"
+        },
+        "place": {
+          "@id": "https://schema.org/Place"
         }
       },
       "@id": "https://w3id.org/traceability#InspectionReport"
@@ -1401,25 +2282,35 @@
       },
       "@id": "https://w3id.org/traceability#Inspector"
     },
-    "IntentToSell": {
+    "Instructions": {
+      "@context": {
+        "description": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#description"
+        }
+      },
+      "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#Instructions"
+    },
+    "IntentToImport": {
       "@context": {
         "declarationDate": {
-          "@id": "https://schema.org/DateTime"
+          "@id": "https://schema.org/startDate"
+        },
+        "exporter": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#exporterParty"
+        },
+        "importer": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#importerParty"
         },
         "product": {
           "@id": "https://www.gs1.org/voc/Product"
-        },
-        "purchaser": {
-          "@id": "https://w3id.org/traceability#Entity"
-        },
-        "sellByDate": {
-          "@id": "https://schema.org/DateTime"
-        },
-        "seller": {
-          "@id": "https://w3id.org/traceability#Entity"
         }
       },
-      "@id": "https://w3id.org/traceability#IntentToSell"
+      "@id": "https://w3id.org/traceability#IntentToImport"
+    },
+    "IntentToImportCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#IntentToImportCredential"
     },
     "Invoice": {
       "@context": {
@@ -1435,20 +2326,29 @@
         "customerReferenceNumber": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#Customer_reference_number"
         },
+        "deductions": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#deductionAmount"
+        },
         "destinationCountry": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#destinationCountry"
         },
         "discounts": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#deductionAmount"
+          "@id": "https://schema.org/discount"
         },
         "exporter": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#exporterParty"
+        },
+        "freightCost": {
+          "@id": "https://schema.org/DeliveryChargeSpecification"
         },
         "identifier": {
           "@id": "https://schema.org/identifier"
         },
         "importer": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#importerParty"
+        },
+        "insuranceCost": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#insuranceChargeTotalAmount"
         },
         "invoiceDate": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#invoiceDateTime"
@@ -1501,7 +2401,7 @@
         "totalPaymentDue": {
           "@id": "https://schema.org/totalPaymentDue"
         },
-        "weight": {
+        "totalWeight": {
           "@id": "https://schema.org/weight"
         }
       },
@@ -1743,6 +2643,20 @@
       },
       "@id": "https://schema.org/LinkRole"
     },
+    "MapResource": {
+      "@context": {
+        "external": {
+          "@id": "https://w3id.org/traceability#ExternalResource"
+        },
+        "geoJson": {
+          "@id": "https://schema.org/geo"
+        },
+        "resourceType": {
+          "@id": "https://schema.org/additionalType"
+        }
+      },
+      "@id": "https://w3id.org/traceability#MapResource"
+    },
     "MasterBillOfLading": {
       "@context": {
         "billOfLadingNumber": {
@@ -1814,10 +2728,10 @@
       },
       "@id": "https://w3id.org/traceability#MasterBillOfLading"
     },
-    "MasterBillOfLadingCertificate": {
+    "MasterBillOfLadingCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#MasterBillOfLadingCertificate"
+      "@id": "https://w3id.org/traceability#MasterBillOfLadingCredential"
     },
     "MeasuredProperty": {
       "@context": {
@@ -1849,27 +2763,10 @@
       },
       "@id": "https://w3id.org/traceability#MechanicalProperty"
     },
-    "MillTestReport": {
-      "@context": {
-        "manufacturer": {
-          "@id": "https://schema.org/Organization"
-        },
-        "product": {
-          "@id": "https://w3id.org/traceability#SteelProduct"
-        },
-        "purchase": {
-          "@id": "https://w3id.org/traceability#Purchase"
-        },
-        "shipment": {
-          "@id": "https://schema.org/ParcelDelivery"
-        }
-      },
-      "@id": "https://w3id.org/traceability#MillTestReport"
-    },
-    "MillTestReportCertificate": {
+    "MillTestReportCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#MillTestReportCertificate"
+      "@id": "https://w3id.org/traceability#MillTestReportCredential"
     },
     "MultiModalBillOfLading": {
       "@context": {
@@ -1942,10 +2839,164 @@
       },
       "@id": "https://w3id.org/traceability#MultiModalBillOfLading"
     },
-    "MultiModalBillOfLadingCertificate": {
+    "MultiModalBillOfLadingCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#MultiModalBillOfLadingCertificate"
+      "@id": "https://w3id.org/traceability#MultiModalBillOfLadingCredential"
+    },
+    "NAISMADateTime": {
+      "@context": {
+        "collectionDate": {
+          "@id": "http://rs.tdwg.org/dwc/terms/eventDate"
+        },
+        "dateAccuracyDays": {
+          "@id": "https://schema.org/value"
+        }
+      },
+      "@id": "https://w3id.org/traceability#NAISMADateTime"
+    },
+    "NAISMAInfestation": {
+      "@context": {
+        "areaSurveyed": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "incidence": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "infestedArea": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "organismQuantity": {
+          "@id": "http://rs.tdwg.org/dwc/terms/organismQuantity"
+        },
+        "organismQuantityUnits": {
+          "@id": "https://schema.org/unitText"
+        },
+        "severity": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementValue"
+        },
+        "severityUnits": {
+          "@id": "https://schema.org/unitText"
+        }
+      },
+      "@id": "https://w3id.org/traceability#NAISMAInfestation"
+    },
+    "NAISMAInformationSource": {
+      "@context": {
+        "dataSource": {
+          "@id": "https://w3id.org/traceability#Entity"
+        },
+        "examiner": {
+          "@id": "http://rs.tdwg.org/dwc/terms/recordedBy"
+        },
+        "reference": {
+          "@id": "http://rs.tdwg.org/dwc/terms/associatedReferences"
+        }
+      },
+      "@id": "https://w3id.org/traceability#NAISMAInformationSource"
+    },
+    "NAISMALocation": {
+      "@context": {
+        "centroidType": {
+          "@id": "https://schema.org/polygon"
+        },
+        "coordinateUncertainty": {
+          "@id": "http://rs.tdwg.org/dwc/terms/coordinateUncertaintyInMeters"
+        },
+        "dataType": {
+          "@id": "https://schema.org/additionalType"
+        },
+        "datum": {
+          "@id": "http://rs.tdwg.org/dwc/terms/geodeticDatum"
+        },
+        "description": {
+          "@id": "https://schema.org/description"
+        },
+        "ecosystem": {
+          "@id": "http://rs.tdwg.org/dwc/terms/locationRemarks"
+        },
+        "location": {
+          "@id": "https://w3id.org/traceability#Place"
+        },
+        "sourceOfLocation": {
+          "@id": "http://rs.tdwg.org/dwc/terms/georeferenceProtocol"
+        },
+        "wellKnownText": {
+          "@id": "http://rs.tdwg.org/dwc/terms/footprintWKT"
+        }
+      },
+      "@id": "https://w3id.org/traceability#NAISMALocation"
+    },
+    "NAISMARecordLevelIdentifiers": {
+      "@context": {
+        "catalogNumber": {
+          "@id": "https://schema.org/identifier"
+        },
+        "pid": {
+          "@id": "https://schema.org/identifier"
+        },
+        "uuid": {
+          "@id": "https://schema.org/identifier"
+        }
+      },
+      "@id": "https://w3id.org/traceability#NAISMARecordLevelIdentifiers"
+    },
+    "NAISMARecordStatus": {
+      "@context": {
+        "managementStatus": {
+          "@id": "https://schema.org/status"
+        },
+        "method": {
+          "@id": "http://rs.tdwg.org/dwc/terms/measurementMethod"
+        },
+        "occurrenceStatus": {
+          "@id": "https://schema.org/status"
+        },
+        "populationStatus": {
+          "@id": "http://rs.tdwg.org/dwc/terms/degreeOfEstablishment"
+        },
+        "recordBasis": {
+          "@id": "http://rs.tdwg.org/dwc/terms/samplingProtocol"
+        },
+        "recordType": {
+          "@id": "https://schema.org/description"
+        },
+        "verificationMethod": {
+          "@id": "http://rs.tdwg.org/dwc/terms/identificationRemarks"
+        }
+      },
+      "@id": "https://w3id.org/traceability#NAISMARecordStatus"
+    },
+    "NAISMASubject": {
+      "@context": {
+        "comments": {
+          "@id": "http://rs.tdwg.org/dwc/terms/occurrenceRemarks"
+        },
+        "hostSpecies": {
+          "@id": "https://w3id.org/traceability#Taxonomy"
+        },
+        "lifeStage": {
+          "@id": "http://rs.tdwg.org/dwc/terms/lifeStage"
+        },
+        "sex": {
+          "@id": "http://rs.tdwg.org/dwc/terms/sex"
+        }
+      },
+      "@id": "https://w3id.org/traceability#NAISMASubject"
+    },
+    "NAISMATaxonomy": {
+      "@context": {
+        "commonName": {
+          "@id": "http://rs.tdwg.org/dwc/terms/vernacularName"
+        },
+        "speciesName": {
+          "@id": "https://w3id.org/traceability#Taxonomy"
+        },
+        "taxonomicSerialNumber": {
+          "@id": "http://rs.tdwg.org/dwc/terms/taxonID"
+        }
+      },
+      "@id": "https://w3id.org/traceability#NAISMATaxonomy"
     },
     "NaturalGasProduct": {
       "@context": {
@@ -1970,10 +3021,10 @@
       },
       "@id": "https://w3id.org/traceability#NaturalGasProduct"
     },
-    "NaturalGasProductCertificate": {
+    "NaturalGasProductCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#NaturalGasProductCertificate"
+      "@id": "https://w3id.org/traceability#NaturalGasProductCredential"
     },
     "OGBillOfLading": {
       "@context": {
@@ -1981,7 +3032,7 @@
           "@id": "https://schema.org/DateTime"
         },
         "batchNumber": {
-          "@id": "https://schema.org/identifier"
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#batchIdentificationId"
         },
         "billOfLading": {
           "@id": "https://w3id.org/traceability#BillOfLading"
@@ -2096,11 +3147,132 @@
       },
       "@id": "https://w3id.org/traceability#OrderedItem"
     },
+    "OrganicCertification": {
+      "@context": {
+        "anniversaryDate": {
+          "@id": "https://www.gs1.org/voc/certificationEndDate"
+        },
+        "certifiedOperation": {
+          "@id": "https://www.gs1.org/voc/certificationSubject"
+        },
+        "certifyingAgent": {
+          "@id": "https://www.gs1.org/voc/certificationAgency"
+        },
+        "effectiveDate": {
+          "@id": "https://www.gs1.org/voc/certificationStartDate"
+        },
+        "issueDate": {
+          "@id": "https://www.gs1.org/voc/initialCertificationDate"
+        },
+        "operationCategory": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        },
+        "organicProducts": {
+          "@id": "https://www.gs1.org/voc/certificationStatement"
+        }
+      },
+      "@id": "https://w3id.org/traceability#OrganicCertification"
+    },
+    "OrganicCertificationCertificate": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#OrganicCertificationCertificate"
+    },
+    "OrganicInspection": {
+      "@context": {
+        "OSPSectionReviews": {
+          "@id": "https://w3id.org/traceability#OrganicOSPSectionReview"
+        },
+        "announcedInspection": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#information"
+        },
+        "applicantCertificationNumber": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#identificationId"
+        },
+        "attachments": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#additionalDocument"
+        },
+        "authorizedOperationContacts": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#specifiedPerson"
+        },
+        "commonInfo": {
+          "@id": "https://w3id.org/traceability#AgricultureInspectionCommonInfo"
+        },
+        "continuingCertification": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#information"
+        },
+        "estimatedHarvestDate": {
+          "@id": "https://www.gs1.org/voc/harvestDate"
+        },
+        "introductionOperationDescription": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#description"
+        },
+        "issuesRequests": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#additionalDescription"
+        },
+        "newApplicant": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#information"
+        },
+        "newLocationActivity": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#information"
+        },
+        "peoplePresent": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#associatedParty"
+        },
+        "pesticideResidueSampling": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#information"
+        },
+        "reinstatement": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#information"
+        },
+        "resolutionIssuesActionItems": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#description"
+        },
+        "samplingDetails": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#content"
+        }
+      },
+      "@id": "https://w3id.org/traceability#OrganicInspection"
+    },
+    "OrganicOSPSectionReview": {
+      "@context": {
+        "OSPSectionCode": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#standard"
+        },
+        "attachments": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#additionalDocument"
+        },
+        "resultCode": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#assertionCode"
+        },
+        "verificationExplanations": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#remarks"
+        }
+      },
+      "@id": "https://w3id.org/traceability#OrganicOSPSectionReview"
+    },
+    "OrganicReview": {
+      "@context": {
+        "additionalInformation": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#content"
+        },
+        "certificationDecision": {
+          "@id": "https://www.gs1.org/voc/certificationStatus"
+        },
+        "decisionMaker": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#specifiedPerson"
+        },
+        "inspectionReport": {
+          "@id": "https://w3id.org/traceability#OrganicInspection"
+        },
+        "reviewer": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#specifiedPerson"
+        }
+      },
+      "@id": "https://w3id.org/traceability#OrganicReview"
+    },
     "Organization": {
       "@context": {
-        "address": {
-          "@id": "https://schema.org/PostalAddress"
-        },
         "brand": {
           "@id": "https://schema.org/Brand"
         },
@@ -2128,6 +3300,9 @@
         "leiCode": {
           "@id": "https://schema.org/leiCode"
         },
+        "location": {
+          "@id": "https://schema.org/location"
+        },
         "name": {
           "@id": "https://schema.org/name"
         },
@@ -2148,15 +3323,50 @@
       },
       "@id": "https://w3id.org/traceability#OssfScorecard"
     },
-    "PGAStatusMessage": {
+    "PGAShipmentStatus": {
       "@context": {
+        "entryLineSequence": {
+          "@id": "https://w3id.org/traceability#entryLineSequence"
+        },
+        "entryNo": {
+          "@id": "https://w3id.org/traceability#entryNo"
+        },
+        "recordNo": {
+          "@id": "https://w3id.org/traceability#recordNo"
+        },
+        "statusCode": {
+          "@id": "https://w3id.org/traceability#statusCode"
+        },
+        "statusCodeDescription": {
+          "@id": "https://w3id.org/traceability#statusCodeDescription"
+        },
+        "subReasonCode": {
+          "@id": "https://w3id.org/traceability#subReasonCode"
+        },
+        "subReasonCodeDescription": {
+          "@id": "https://w3id.org/traceability#subReasonCodeDescription"
+        },
+        "validCodeReason": {
+          "@id": "https://w3id.org/traceability#validCodeReason"
+        },
+        "validCodeReasonDescription": {
+          "@id": "https://w3id.org/traceability#validCodeReasonDescription"
+        }
       },
-      "@id": "https://w3id.org/traceability#PGAStatusMessage"
+      "@id": "https://w3id.org/traceability#PGAShipmentStatus"
     },
-    "PGAStatusMessageCertificate": {
+    "PGAShipmentStatusCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#PGAStatusMessageCertificate"
+      "@id": "https://w3id.org/traceability#PGAShipmentStatusCredential"
+    },
+    "PGAShipmentStatusList": {
+      "@context": {
+        "pgaShipmentStatusItems": {
+          "@id": "https://schema.org/ItemList"
+        }
+      },
+      "@id": "https://w3id.org/traceability#PGAShipmentStatusList"
     },
     "Package": {
       "@context": {
@@ -2166,11 +3376,17 @@
         "grossVolume": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossVolumeMeasure"
         },
+        "grossWeight": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossWeightMeasure"
+        },
         "height": {
           "@id": "https://schema.org/height"
         },
         "includedTradeLineItems": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#includedTradeLineItem"
+        },
+        "netWeight": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#netWeightMeasure"
         },
         "packagingType": {
           "@id": "https://www.gs1.org/voc/packagingMaterial"
@@ -2178,11 +3394,8 @@
         "perPackageUnitQuantity": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#perPackageUnitQuantity"
         },
-        "shippingMarks": {
+        "physicalShippingMarks": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#physicalShippingMarks"
-        },
-        "weight": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossWeightMeasure"
         },
         "width": {
           "@id": "https://schema.org/width"
@@ -2232,9 +3445,6 @@
         "estimatedTimeOfArrival": {
           "@id": "https://schema.org/arrivalTime"
         },
-        "grossWeight": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossWeightMeasure"
-        },
         "handlingInstructions": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#handlingInstructions"
         },
@@ -2244,17 +3454,11 @@
         "invoiceId": {
           "@id": "https://schema.org/identifier"
         },
-        "itemQuantity": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#tradeLineItemQuantity"
-        },
-        "numberOfPackages": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
-        },
         "orderNumber": {
           "@id": "https://schema.org/orderNumber"
         },
         "partOfOrder": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#ConsignmentItem"
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#includedConsignmentItem"
         },
         "seller": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#sellerParty"
@@ -2271,8 +3475,17 @@
         "totalGrossVolume": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossVolumeMeasure"
         },
+        "totalGrossWeight": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossWeightMeasure"
+        },
+        "totalItemQuantity": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#tradeLineItemQuantity"
+        },
         "totalNetWeight": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#netWeightMeasure"
+        },
+        "totalNumberOfPackages": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
         },
         "trackingNumber": {
           "@id": "https://schema.org/trackingNumber"
@@ -2280,10 +3493,10 @@
       },
       "@id": "https://w3id.org/traceability#PackingList"
     },
-    "PackingListCertificate": {
+    "PackingListCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#PackingListCertificate"
+      "@id": "https://w3id.org/traceability#PackingListCredential"
     },
     "PackingListItem": {
       "@context": {
@@ -2336,6 +3549,35 @@
       },
       "@id": "https://schema.org/ParcelDelivery"
     },
+    "PartOfOrder": {
+      "@context": {
+        "grossVolume": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossVolumeMeasure"
+        },
+        "grossWeight": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#grossWeightMeasure"
+        },
+        "itemQuantity": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#tradeLineItemQuantity"
+        },
+        "manufacturer": {
+          "@id": "https://schema.org/Organization"
+        },
+        "netWeight": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#netWeightMeasure"
+        },
+        "orderNumber": {
+          "@id": "https://schema.org/orderNumber"
+        },
+        "packageQuantity": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
+        },
+        "transportPackages": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#Package"
+        }
+      },
+      "@id": "https://schema.org/OrderItem"
+    },
     "Person": {
       "@context": {
         "email": {
@@ -2367,8 +3609,8 @@
         "additionalDeclaration": {
           "@id": "https://schema.org/Comment"
         },
-        "agPackage": {
-          "@id": "https://w3id.org/traceability#AgPackage"
+        "agriculturePackage": {
+          "@id": "https://w3id.org/traceability#AgriculturePackage"
         },
         "applicant": {
           "@id": "https://w3c-ccg.github.io/traceability-vocab/#dfn-entities"
@@ -2422,7 +3664,7 @@
           "@id": "https://w3id.org/traceability#portOfEntry"
         },
         "shipment": {
-          "@id": "https://schema.org/AgParcelDelivery"
+          "@id": "https://schema.org/AgricultureParcelDelivery"
         },
         "signatureDate": {
           "@id": "https://schema.org/DateTime"
@@ -2441,8 +3683,14 @@
         "globalLocationNumber": {
           "@id": "https://schema.org/globalLocationNumber"
         },
-        "unLocode": {
+        "iataAirportCode": {
           "@id": "https://onerecord.iata.org/cargo/Location#code"
+        },
+        "locationName": {
+          "@id": "https://schema.org/name"
+        },
+        "unLocode": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#UNECELOCODE"
         }
       },
       "@id": "https://schema.org/Place"
@@ -2464,8 +3712,8 @@
         "crossStreet": {
           "@id": "https://gs1.org/voc/crossStreet"
         },
-        "organizationName": {
-          "@id": "https://gs1.org/voc/organizationName"
+        "name": {
+          "@id": "https://schema.org/name"
         },
         "postOfficeBoxNumber": {
           "@id": "https://schema.org/postOfficeBoxNumber"
@@ -2647,10 +3895,10 @@
       },
       "@id": "https://w3id.org/traceability#ProductRegistrationEvidenceDocument"
     },
-    "ProformaInvoiceCertificate": {
+    "ProformaInvoiceCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#ProformaInvoiceCertificate"
+      "@id": "https://w3id.org/traceability#ProformaInvoiceCredential"
     },
     "Purchase": {
       "@context": {
@@ -2666,10 +3914,90 @@
       },
       "@id": "https://w3id.org/traceability#Purchase"
     },
-    "PurchaseOrderCertificate": {
+    "PurchaseOrder": {
+      "@context": {
+        "buyer": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#buyerParty"
+        },
+        "comments": {
+          "@id": "https://schema.org/Comment"
+        },
+        "currencyOfSettlement": {
+          "@id": "https://schema.org/currency"
+        },
+        "destinationCountry": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#destinationCountry"
+        },
+        "discounts": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#deductionAmount"
+        },
+        "exporter": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#exporterParty"
+        },
+        "freightCost": {
+          "@id": "https://schema.org/DeliveryChargeSpecification"
+        },
+        "importer": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#importerParty"
+        },
+        "insuranceCost": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#insuranceChargeTotalAmount"
+        },
+        "itemsShipped": {
+          "@id": "https://schema.org/itemShipped"
+        },
+        "orderDate": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#buyerOrderDateTime"
+        },
+        "originCountry": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#originCountry"
+        },
+        "packageQuantity": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#packageQuantity"
+        },
+        "portOfEntry": {
+          "@id": "https://schema.org/Place"
+        },
+        "provider": {
+          "@id": "https://schema.org/provider"
+        },
+        "purchaseOrderNo": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1153/#Proposed_purchase_order_reference_number"
+        },
+        "seller": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#sellerParty"
+        },
+        "shipFromParty": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#shipFromParty"
+        },
+        "shipToParty": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#shipToParty"
+        },
+        "tax": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#taxTotalAmount"
+        },
+        "termsOfDelivery": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#specifiedDeliveryTerms"
+        },
+        "termsOfPayment": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#specifiedPaymentTerms"
+        },
+        "totalOrderAmount": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#MonetarySummation"
+        },
+        "totalPaymentDue": {
+          "@id": "https://schema.org/totalPaymentDue"
+        },
+        "totalWeight": {
+          "@id": "https://schema.org/weight"
+        }
+      },
+      "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncl1001/#Purchase_order"
+    },
+    "PurchaseOrderCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#PurchaseOrderCertificate"
+      "@id": "https://w3id.org/traceability#PurchaseOrderCredential"
     },
     "Qualification": {
       "@context": {
@@ -2692,6 +4020,17 @@
         }
       },
       "@id": "https://schema.org/QuantitativeValue"
+    },
+    "RawMaterial": {
+      "@context": {
+        "inchiKey": {
+          "@id": "https://w3id.org/traceability#inchiKey"
+        },
+        "name": {
+          "@id": "https://schema.org/name"
+        }
+      },
+      "@id": "https://w3id.org/traceability#RawMaterial"
     },
     "RevocationList2020Status": {
       "@context": {
@@ -2745,26 +4084,26 @@
       },
       "@id": "https://w3id.org/traceability#SIMASteelImportLicense"
     },
-    "SIMASteelImportLicenseApplicationCertificate": {
+    "SIMASteelImportLicenseApplicationCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#SIMASteelImportLicenseApplicationCertificate"
+      "@id": "https://w3id.org/traceability#SIMASteelImportLicenseApplicationCredential"
     },
-    "SIMASteelImportLicenseCertificate": {
+    "SIMASteelImportLicenseCredential": {
       "@context": {
-        "expectedDateOfImport": {
-          "@id": "https://schema.org/validThrough"
-        }
       },
-      "@id": "https://w3id.org/traceability#SIMASteelImportLicenseCertificate"
+      "@id": "https://w3id.org/traceability#SIMASteelImportLicenseCredential"
     },
     "SIMASteelImportProductSpecifier": {
       "@context": {
-        "product": {
-          "@id": "https://w3id.org/traceability#SteelProduct"
-        },
-        "value": {
+        "customsValue": {
           "@id": "https://schema.org/MonetaryAmount"
+        },
+        "productCategory": {
+          "@id": "https://w3id.org/traceability#ProductCategory"
+        },
+        "steelProduct": {
+          "@id": "https://w3id.org/traceability#SteelProduct"
         }
       },
       "@id": "https://w3id.org/traceability#SIMASteelImportProductSpecifier"
@@ -2804,7 +4143,7 @@
         "transportEquipmentQuantity": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#transportEquipmentQuantity"
         },
-        "transportMeansId": {
+        "vesselName": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#TransportMeans"
         },
         "vesselNumber": {
@@ -2816,21 +4155,21 @@
       },
       "@id": "https://w3id.org/traceability#SeaCargoManifest"
     },
-    "SeaCargoManifestCertificate": {
+    "SeaCargoManifestCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#SeaCargoManifestCertificate"
+      "@id": "https://w3id.org/traceability#SeaCargoManifestCredential"
     },
     "Seal": {
       "@context": {
-        "ISOEquipmentCode": {
-          "@id": "https://api.swaggerhub.com/domains/dcsaorg/DCSA_DOMAIN/1.0.1#/components/schemas/sealSource"
-        },
-        "equipmentReference": {
+        "sealNumber": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#seal_number"
         },
-        "tareWeight": {
-          "@id": "https://api.swaggerhub.com/domains/dcsaorg/DCSA_DOMAIN/1.0.1#/components/schemas/sealType"
+        "sealSource": {
+          "@id": "https://api.swaggerhub.com/domains/dcsaorg/DCSA_DOMAIN/1.0.1#/components/schemas/sealSource"
+        },
+        "sealType": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#sealTypeCode"
         }
       },
       "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#Seal"
@@ -2842,6 +4181,18 @@
         },
         "calculationBasis": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#calculationBasis"
+        },
+        "chargeCode": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#chargeCategoryCode"
+        },
+        "chargeText": {
+          "@id": "https://schema.org/description"
+        },
+        "paymentTerm": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#PaymentTerms"
+        },
+        "rate": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#unitPrice"
         }
       },
       "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#ServiceCharge"
@@ -2905,10 +4256,10 @@
       },
       "@id": "https://w3id.org/traceability#ShippingInstructions"
     },
-    "ShippingInstructionsCertificate": {
+    "ShippingInstructionsCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#ShippingInstructionsCertificate"
+      "@id": "https://w3id.org/traceability#ShippingInstructionsCredential"
     },
     "ShippingStop": {
       "@context": {
@@ -2938,7 +4289,7 @@
       },
       "@id": "https://w3id.org/traceability#SoftwareBillOfMaterials"
     },
-    "SoftwareBillofMaterialsCertificate": {
+    "SoftwareBillofMaterialsCredential": {
       "@context": {
       },
       "@id": "https://w3id.org/traceability#SoftwareBillOfMaterialsCredential"
@@ -2981,6 +4332,38 @@
       },
       "@id": "https://w3id.org/traceability#SteelProduct"
     },
+    "Taxonomy": {
+      "@context": {
+        "class": {
+          "@id": "http://rs.tdwg.org/dwc/terms/class"
+        },
+        "family": {
+          "@id": "http://rs.tdwg.org/dwc/terms/family"
+        },
+        "genus": {
+          "@id": "http://rs.tdwg.org/dwc/terms/genus"
+        },
+        "kingdom": {
+          "@id": "http://rs.tdwg.org/dwc/terms/kingdom"
+        },
+        "order": {
+          "@id": "http://rs.tdwg.org/dwc/terms/order"
+        },
+        "phylum": {
+          "@id": "http://rs.tdwg.org/dwc/terms/phylum"
+        },
+        "species": {
+          "@id": "http://rs.tdwg.org/dwc/terms/specificEpithet"
+        },
+        "subspecies": {
+          "@id": "http://rs.tdwg.org/dwc/terms/infraspecificEpithet"
+        },
+        "variety": {
+          "@id": "http://rs.tdwg.org/dwc/terms/cultivarEpithet"
+        }
+      },
+      "@id": "https://w3id.org/traceability#Taxonomy"
+    },
     "Template": {
       "@context": {
         "image": {
@@ -2996,6 +4379,9 @@
     },
     "TraceablePresentation": {
       "@context": {
+        "workflow": {
+          "@id": "https://w3id.org/traceability#Workflow"
+        }
       },
       "@id": "https://w3id.org/traceability#TraceablePresentation"
     },
@@ -3051,25 +4437,25 @@
         "price": {
           "@id": "https://schema.org/price"
         },
-        "product": {
-          "@id": "https://schema.org/Product"
+        "products": {
+          "@id": "https://w3c-ccg.github.io/hashlink/#hl-url-params"
         }
       },
       "@id": "https://w3id.org/traceability#TransferEvent"
     },
     "TransformEvent": {
       "@context": {
-        "identifier": {
-          "@id": "https://schema.org/identifier"
+        "consumedProducts": {
+          "@id": "https://w3c-ccg.github.io/hashlink/#hl-url-params"
+        },
+        "newProducts": {
+          "@id": "https://w3c-ccg.github.io/hashlink/#hl-url-params"
         },
         "organization": {
           "@id": "https://w3id.org/traceability#Organization"
         },
         "place": {
           "@id": "https://schema.org/Place"
-        },
-        "product": {
-          "@id": "https://schema.org/Product"
         }
       },
       "@id": "https://w3id.org/traceability#TransformEvent"
@@ -3117,6 +4503,9 @@
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#identificationId"
         },
         "isShipperOwned": {
+          "@id": "https://api.swaggerhub.com/domains/dcsaorg/DCSA_DOMAIN/1.0.1#/components/schemas/isShipperOwned"
+        },
+        "seals": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#affixedSeal"
         },
         "tareWeight": {
@@ -3139,8 +4528,8 @@
         "place": {
           "@id": "https://schema.org/Place"
         },
-        "product": {
-          "@id": "https://schema.org/Product"
+        "products": {
+          "@id": "https://w3c-ccg.github.io/hashlink/#hl-url-params"
         },
         "trackingNumber": {
           "@id": "https://schema.org/trackingNumber"
@@ -3148,32 +4537,17 @@
       },
       "@id": "https://w3id.org/traceability#TransportEvent"
     },
-    "USMCACertificateOfOrigin": {
+    "USMCACertificationOfOrigin": {
       "@context": {
-        "blanketPeriodFrom": {
-          "@id": "https://schema.org/validFrom"
-        },
-        "blanketPeriodTo": {
-          "@id": "https://schema.org/validThrough"
-        },
-        "exporterDetails": {
-          "@id": "https://w3id.org/traceability#importerUnknown"
-        },
-        "importerDetails": {
-          "@id": "https://w3id.org/traceability#importerDetails"
-        },
-        "producerDetails": {
-          "@id": "https://schema.org/manufacturer"
-        }
       },
-      "@id": "https://w3id.org/traceability#USMCACertificateOfOrigin"
+      "@id": "https://w3id.org/traceability#USMCACertificationOfOrigin"
     },
     "USMCACertifier": {
       "@context": {
         "certifierDetails": {
           "@id": "https://w3id.org/traceability#certifierDetails"
         },
-        "certifierRole": {
+        "role": {
           "@id": "https://w3id.org/traceability#certifierRole"
         }
       },
@@ -3184,8 +4558,23 @@
         "countryOfOrigin": {
           "@id": "https://w3id.org/traceability#countryOfOrigin"
         },
+        "exporterDetails": {
+          "@id": "https://w3id.org/traceability#exporterDetails"
+        },
+        "importerDetails": {
+          "@id": "https://w3id.org/traceability#importerDetails"
+        },
+        "importerUnknown": {
+          "@id": "https://w3id.org/traceability#importerUnknown"
+        },
         "originCriterion": {
           "@id": "https://w3id.org/traceability#originCriterion"
+        },
+        "producerConfidential": {
+          "@id": "https://w3id.org/traceability#producerConfidential"
+        },
+        "producerDetails": {
+          "@id": "https://schema.org/manufacturer"
         },
         "product": {
           "@id": "https://schema.org/Product"
@@ -3232,7 +4621,7 @@
           "@id": "https://w3id.org/traceability#serialNumber"
         },
         "shipment": {
-          "@id": "https://w3id.org/traceability#AgParcelDelivery"
+          "@id": "https://w3id.org/traceability#AgricultureParcelDelivery"
         },
         "signatureDate": {
           "@id": "https://w3id.org/traceability#signatureDate"
@@ -3283,6 +4672,12 @@
     },
     "Workflow": {
       "@context": {
+        "definition": {
+          "@id": "https://w3id.org/traceability/#workflow-definition"
+        },
+        "instance": {
+          "@id": "https://w3id.org/traceability/#workflow-instance"
+        }
       },
       "@id": "https://w3id.org/traceability#Workflow"
     },
@@ -3293,6 +4688,8 @@
       "@id": "https://schema.org/image",
       "@type": "@id"
     },
+    "items": "https://schema.org/ItemList",
+    "manufacturer": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#manufacturerParty",
     "name": "https://schema.org/name",
     "ppq203": {
       "@context": {
@@ -3341,7 +4738,7 @@
           "@id": "https://w3id.org/traceability#intendedUse"
         },
         "shipment": {
-          "@id": "https://schema.org/AgParcelDelivery"
+          "@id": "https://schema.org/AgricultureParcelDelivery"
         },
         "signatureDate": {
           "@id": "https://w3id.org/traceability#signatureDate"
@@ -3349,6 +4746,8 @@
       },
       "@id": "https://w3id.org/traceability#ppq587"
     },
+    "product": "https://w3id.org/traceability#SteelProduct",
+    "rawMaterial": "https://w3id.org/traceability#rawMaterial",
     "relatedLink": {
       "@id": "https://w3id.org/traceability#LinkRole"
     },
