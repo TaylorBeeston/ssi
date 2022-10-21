@@ -159,6 +159,9 @@ pub const JFF_VC_EDU_PLUGFEST_2022_CONTEXT: &str =
     "https://w3c-ccg.github.io/vc-ed/plugfest-1-2022/jff-vc-edu-plugfest-1-context.json";
 pub const OB_V2_CONTEXT: &str = "https://openbadgespec.org/v2/context.json";
 pub const OB_V3_CONTEXT: &str = "https://imsglobal.github.io/openbadges-specification/context.json";
+pub const CHAPI_ALUMNI_CONTEXT: &str = "https://playground.chapi.io/examples/alumni/alumni-v1.json";
+pub const CHAPI_MOVIE_TICKET_CONTEXT: &str =
+    "https://playground.chapi.io/examples/movieTicket/ticket-v1.json";
 
 lazy_static::lazy_static! {
     pub static ref CREDENTIALS_V1_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
@@ -353,6 +356,18 @@ lazy_static::lazy_static! {
         let iri = Iri::new(OB_V3_CONTEXT).unwrap();
         RemoteDocument::new(doc, iri)
     };
+    pub static ref CHAPI_ALUMNI_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
+        let jsonld = ssi_contexts::CHAPI_ALUMNI;
+        let doc = json::parse(jsonld).unwrap();
+        let iri = Iri::new(CHAPI_ALUMNI_CONTEXT).unwrap();
+        RemoteDocument::new(doc, iri)
+    };
+    pub static ref CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
+        let jsonld = ssi_contexts::CHAPI_MOVIE_TICKET;
+        let doc = json::parse(jsonld).unwrap();
+        let iri = Iri::new(CHAPI_MOVIE_TICKET_CONTEXT).unwrap();
+        RemoteDocument::new(doc, iri)
+    };
 }
 
 #[derive(Clone)]
@@ -410,6 +425,8 @@ impl Loader for StaticLoader {
                 }
                 OB_V2_CONTEXT => Ok(OB_V2_CONTEXT_DOCUMENT.clone()),
                 OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
+                CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
+                CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
 
                 _ => Err(json_ld::ErrorCode::LoadingDocumentFailed.into()),
             }

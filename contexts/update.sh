@@ -30,4 +30,6 @@ exec curl \
 	https://w3c-ccg.github.io/vc-ed/plugfest-1-2022/jff-vc-edu-plugfest-1-context.json -o jff-vc-edu-plugfest-1-context.json \
     https://openbadgespec.org/v2/context.json -o openbadges-v2.json \
     https://imsglobal.github.io/openbadges-specification/context.json -o openbadges-v3.json \
+    https://playground.chapi.io/examples/alumni/alumni-v1.json -o chapi-alumni-v1.json \
+    https://playground.chapi.io/examples/movieTicket/ticket-v1.json -o chapi-movie-ticket-v1.json \
 	-L
