@@ -162,6 +162,8 @@ pub const OB_V3_CONTEXT: &str = "https://imsglobal.github.io/openbadges-specific
 pub const CHAPI_ALUMNI_CONTEXT: &str = "https://playground.chapi.io/examples/alumni/alumni-v1.json";
 pub const CHAPI_MOVIE_TICKET_CONTEXT: &str =
     "https://playground.chapi.io/examples/movieTicket/ticket-v1.json";
+pub const PLUGFEST_V2_CONTEXT: &str =
+    "https://playground.chapi.io/examples/movieTicket/ticket-v1.json";
 
 lazy_static::lazy_static! {
     pub static ref CREDENTIALS_V1_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
@@ -368,6 +370,12 @@ lazy_static::lazy_static! {
         let iri = Iri::new(CHAPI_MOVIE_TICKET_CONTEXT).unwrap();
         RemoteDocument::new(doc, iri)
     };
+    pub static ref PLUGFEST_V2_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
+        let jsonld = ssi_contexts::PLUGFEST_V2;
+        let doc = json::parse(jsonld).unwrap();
+        let iri = Iri::new(PLUGFEST_V2_CONTEXT).unwrap();
+        RemoteDocument::new(doc, iri)
+    };
 }
 
 #[derive(Clone)]
@@ -427,6 +435,7 @@ impl Loader for StaticLoader {
                 OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
                 CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
                 CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
+                PLUGFEST_V2_CONTEXT => Ok(PLUGFEST_V2_CONTEXT_DOCUMENT.clone()),
 
                 _ => Err(json_ld::ErrorCode::LoadingDocumentFailed.into()),
             }
