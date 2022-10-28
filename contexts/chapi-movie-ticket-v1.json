@@ -2,6 +2,14 @@
   "@context": {
     "@version": 1.1,
     "@protected": true,
+    "MovieTicketCredential": {
+      "@id": "https://playground.chapi.io/examples/movieTicket/vocab#MovieTicketCredential"
+    },
+    "Ticket": "http://schema.org/Ticket",
+    "owns": {
+      "@id": "https://schema.org/owns",
+      "@type": "@id"
+    },
     "name": "http://schema.org/name",
     "description": "http://schema.org/description",
     "identifier": "http://schema.org/identifier",
