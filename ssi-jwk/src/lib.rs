@@ -268,9 +268,8 @@ impl Default for Algorithm {
 }
 
 impl JWK {
-    #[cfg(any(feature = "ed25519"))]
+    #[cfg(feature = "ring")]
     pub fn generate_ed25519() -> Result<JWK, Error> {
-        #[cfg(feature = "ring")]
         {
             let rng = ring::rand::SystemRandom::new();
             let mut key_pkcs8 = ring::signature::Ed25519KeyPair::generate_pkcs8(&rng)?
@@ -341,26 +340,25 @@ impl JWK {
         })))
     }
 
-    #[cfg(feature = "secp256k1"")]
+    #[cfg(feature = "secp256k1")]
     pub fn generate_secp256k1() -> Result<JWK, Error> {
-        let mut bytes = [0u8; 32];
-
-        rand_old::rngs::OsRng.fill_bytes(&mut bytes);
-
-        let secret_key = k256::SecretKey::from_bytes(&bytes).unwrap();
+        let mut rng = rand::rngs::OsRng {};
+        let secret_key = k256::SecretKey::random(&mut rng);
         // SecretKey zeroizes on drop
-        let sk_bytes: &[u8] = secret_key.as_scalar_bytes().as_ref();
+        let sk_scalar = secret_key.as_scalar_core().to_be_bytes();
+        let sk_bytes: &[u8] = sk_scalar.as_ref();
         let public_key = secret_key.public_key();
         let mut ec_params = ECParams::try_from(&public_key)?;
         ec_params.ecc_private_key = Some(Base64urlUInt(sk_bytes.to_vec()));
         Ok(JWK::from(Params::EC(ec_params)))
     }
 
-    #[cfg(feature = "secp256k1"")]
+    #[cfg(feature = "secp256k1")]
     pub fn generate_secp256k1_from_bytes(bytes: &[u8]) -> Result<JWK, Error> {
-        let secret_key = k256::SecretKey::from_bytes(bytes).unwrap();
+        let secret_key = k256::SecretKey::from_be_bytes(bytes).unwrap();
         // SecretKey zeroizes on drop
-        let sk_bytes: &[u8] = secret_key.as_scalar_bytes().as_ref();
+        let sk_scalar = secret_key.as_scalar_core().to_be_bytes();
+        let sk_bytes: &[u8] = sk_scalar.as_ref();
         let public_key = secret_key.public_key();
         let mut ec_params = ECParams::try_from(&public_key)?;
         ec_params.ecc_private_key = Some(Base64urlUInt(sk_bytes.to_vec()));
