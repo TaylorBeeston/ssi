@@ -1,0 +1,48 @@
+[package]
+name = "ssi-dids"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+http = ["reqwest", "percent-encoding"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_urlencoded = "0.7"
+async-std = { version = "1.9", features = ["attributes"] }
+async-trait = "0.1"
+thiserror = "1.0"
+anyhow = "1.0"
+derive_builder = "0.9"
+bs58 = { version = "0.4", features = ["check"] }
+hex = "0.4"
+multibase = "0.8"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"], optional = true }
+percent-encoding = { version = "2.1", optional = true }
+ssi-jwk = { path = "../ssi-jwk", version = "0.1", default-features = false }
+ssi-json-ld = { path = "../ssi-json-ld", version = "0.1" }
+ssi-core = { path = "../ssi-core", version = "0.1"}
+ssi-caips = { path = "../ssi-caips", version = "0.1", default-features = false  }
+
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+chrono = { version = "0.4", features = ["serde", "wasmbind"] }
+
+[dev-dependencies]
+tokio = { version = "1.15", features = ["macros"] }
+futures = "0.3"
+hyper = { version = "0.14", features = [
+    "server",
+    "client",
+    "http1",
+    "stream",
+] }
+ssi-jwk = { path = "../ssi-jwk", version = "*", default-features = false, features = ["secp256k1"] }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

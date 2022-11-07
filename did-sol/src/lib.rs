@@ -2,17 +2,17 @@ use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-use ssi::caip10::BlockchainAccountId;
-use ssi::caip2::ChainId;
-use ssi::did::{
-    Context, Contexts, DIDMethod, Document, Source, VerificationMethod, VerificationMethodMap,
-    DEFAULT_CONTEXT, DIDURL,
-};
-use ssi::did_resolve::{
+use ssi_caips::caip10::BlockchainAccountId;
+use ssi_caips::caip2::ChainId;
+use ssi_dids::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata, ERROR_INVALID_DID,
     TYPE_DID_LD_JSON,
 };
-use ssi::jwk::{Base64urlUInt, OctetParams, Params, JWK};
+use ssi_dids::{
+    Context, Contexts, DIDMethod, Document, Source, VerificationMethod, VerificationMethodMap,
+    DEFAULT_CONTEXT, DIDURL,
+};
+use ssi_jwk::{Base64urlUInt, OctetParams, Params, JWK};
 
 // https://github.com/ChainAgnostic/CAIPs/blob/master/CAIPs/caip-30.md
 const REFERENCE_SOLANA_MAINNET: &str = "4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZ";
@@ -201,8 +201,8 @@ impl DIDMethod for DIDSol {
 mod tests {
     use super::*;
     use serde_json::json;
-    use ssi::did_resolve::ResolutionInputMetadata;
-    use ssi::jwk::JWK;
+    use ssi_dids::did_resolve::ResolutionInputMetadata;
+    use ssi_jwk::JWK;
 
     #[test]
     fn key_to_did_sol() {
@@ -244,7 +244,7 @@ mod tests {
     }
 
     async fn credential_prove_verify_did_sol_1(solvm: bool) {
-        use ssi::vc::{Credential, Issuer, LinkedDataProofOptions, URI};
+        use ssi_vc::{Credential, Issuer, LinkedDataProofOptions, URI};
 
         let key: JWK = serde_json::from_value(json!({
             "kty": "OKP",
@@ -274,7 +274,7 @@ mod tests {
             issue_options.verification_method = Some(URI::String(did.to_string() + "#controller"));
         }
         eprintln!("vm {:?}", issue_options.verification_method);
-        let mut context_loader = ssi::jsonld::ContextLoader::default();
+        let mut context_loader = ssi_json_ld::ContextLoader::default();
         let vc_no_proof = vc.clone();
         let proof = vc
             .generate_proof(&key, &issue_options, &DIDSol, &mut context_loader)
@@ -290,25 +290,40 @@ mod tests {
         // test that issuer property is used for verification
         let mut vc_bad_issuer = vc.clone();
         vc_bad_issuer.issuer = Some(Issuer::URI(URI::String("did:example:bad".to_string())));
-        assert!(vc_bad_issuer.verify(None, &DIDSol, &mut context_loader).await.errors.len() > 0);
+        assert!(!vc_bad_issuer
+            .verify(None, &DIDSol, &mut context_loader)
+            .await
+            .errors
+            .is_empty());
 
         // Check that proof JWK must match proof verificationMethod
         let mut vc_wrong_key = vc_no_proof.clone();
         let other_key = JWK::generate_ed25519().unwrap();
-        use ssi::ldp::ProofSuite;
-        let proof_bad = ssi::ldp::Ed25519BLAKE2BDigestSize20Base58CheckEncodedSignature2021
-            .sign(&vc_no_proof, &issue_options, &DIDSol, &mut context_loader, &other_key, None)
+        use ssi_ldp::ProofSuite;
+        let proof_bad = ssi_ldp::Ed25519BLAKE2BDigestSize20Base58CheckEncodedSignature2021
+            .sign(
+                &vc_no_proof,
+                &issue_options,
+                &DIDSol,
+                &mut context_loader,
+                &other_key,
+                None,
+            )
             .await
             .unwrap();
         vc_wrong_key.add_proof(proof_bad);
         vc_wrong_key.validate().unwrap();
-        assert!(vc_wrong_key.verify(None, &DIDSol, &mut context_loader).await.errors.len() > 0);
+        assert!(!vc_wrong_key
+            .verify(None, &DIDSol, &mut context_loader)
+            .await
+            .errors
+            .is_empty());
 
         // Make it into a VP
-        use ssi::one_or_many::OneOrMany;
-        use ssi::vc::{CredentialOrJWT, Presentation, ProofPurpose, DEFAULT_CONTEXT};
+        use ssi_core::one_or_many::OneOrMany;
+        use ssi_vc::{CredentialOrJWT, Presentation, ProofPurpose, DEFAULT_CONTEXT};
         let mut vp = Presentation {
-            context: ssi::vc::Contexts::Many(vec![ssi::vc::Context::URI(ssi::vc::URI::String(
+            context: ssi_vc::Contexts::Many(vec![ssi_vc::Context::URI(ssi_vc::URI::String(
                 DEFAULT_CONTEXT.to_string(),
             ))]),
 
@@ -320,12 +335,13 @@ mod tests {
             proof: None,
             holder: None,
             property_set: None,
+            holder_binding: None,
         };
         let mut vp_issue_options = LinkedDataProofOptions::default();
         vp.holder = Some(URI::String(did.to_string()));
         vp_issue_options.verification_method = Some(URI::String(did.to_string() + "#controller"));
         vp_issue_options.proof_purpose = Some(ProofPurpose::Authentication);
-        let mut context_loader = ssi::jsonld::ContextLoader::default();
+        let mut context_loader = ssi_json_ld::ContextLoader::default();
         let vp_proof = vp
             .generate_proof(&key, &vp_issue_options, &DIDSol, &mut context_loader)
             .await
@@ -333,7 +349,9 @@ mod tests {
         vp.add_proof(vp_proof);
         println!("VP: {}", serde_json::to_string_pretty(&vp).unwrap());
         vp.validate().unwrap();
-        let vp_verification_result = vp.verify(Some(vp_issue_options.clone()), &DIDSol, &mut context_loader).await;
+        let vp_verification_result = vp
+            .verify(Some(vp_issue_options.clone()), &DIDSol, &mut context_loader)
+            .await;
         println!("{:#?}", vp_verification_result);
         assert!(vp_verification_result.errors.is_empty());
 
@@ -348,20 +366,26 @@ mod tests {
             },
             _ => unreachable!(),
         }
-        let vp_verification_result = vp1.verify(Some(vp_issue_options), &DIDSol, &mut context_loader).await;
+        let vp_verification_result = vp1
+            .verify(Some(vp_issue_options), &DIDSol, &mut context_loader)
+            .await;
         println!("{:#?}", vp_verification_result);
-        assert!(vp_verification_result.errors.len() >= 1);
+        assert!(!vp_verification_result.errors.is_empty());
 
         // test that holder is verified
         let mut vp2 = vp.clone();
         vp2.holder = Some(URI::String("did:example:bad".to_string()));
-        assert!(vp2.verify(None, &DIDSol, &mut context_loader).await.errors.len() > 0);
+        assert!(!vp2
+            .verify(None, &DIDSol, &mut context_loader)
+            .await
+            .errors
+            .is_empty());
     }
 
     /*
     #[tokio::test]
     async fn credential_verify_eip712vm() {
-        use ssi::vc::Credential;
+        use ssi_vc::Credential;
         let vc: Credential = serde_json::from_str(include_str!("../tests/vc.jsonld")).unwrap();
         eprintln!("vc {:?}", vc);
         let verification_result = vc.verify(None, &DIDSol).await;

@@ -1,12 +1,12 @@
 use async_trait::async_trait;
 use std::default::Default;
 
-use ssi::did::{DIDMethod, Document};
-use ssi::did_resolve::{
+use ssi_dids::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata, ERROR_INVALID_DID,
     TYPE_DID_LD_JSON,
 };
-use ssi::USER_AGENT;
+use ssi_dids::{DIDMethod, Document};
+pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 const TOR_SOCKS_PORT: usize = 9050;
 
@@ -114,10 +114,7 @@ impl DIDResolver for DIDOnion {
             }
             Err(err) => {
                 return (
-                    ResolutionMetadata::from_error(&format!(
-                        "Error constructing proxy: {}",
-                        err.to_string()
-                    )),
+                    ResolutionMetadata::from_error(&format!("Error constructing proxy: {}", err)),
                     Vec::new(),
                     None,
                 )
@@ -127,10 +124,7 @@ impl DIDResolver for DIDOnion {
             Ok(c) => c,
             Err(err) => {
                 return (
-                    ResolutionMetadata::from_error(&format!(
-                        "Error building HTTP client: {}",
-                        err.to_string()
-                    )),
+                    ResolutionMetadata::from_error(&format!("Error building HTTP client: {}", err)),
                     Vec::new(),
                     None,
                 )
@@ -146,7 +140,7 @@ impl DIDResolver for DIDOnion {
                 return (
                     ResolutionMetadata::from_error(&format!(
                         "Error sending HTTP request : {}",
-                        err.to_string()
+                        err
                     )),
                     Vec::new(),
                     None,
@@ -225,7 +219,7 @@ mod tests {
         "did:onion:fscst5exmlmr262byztwz4kzhggjlzumvc2ndvgytzoucr2tkgxf7mid";
 
     #[tokio::test]
-    #[cfg_attr(not(feature = "tor-tests"), ignore)]
+    #[ignore]
     async fn did_onion_resolve_live() {
         let (res_meta, doc_opt, _doc_meta) = DIDOnion::default()
             .resolve(TORGAP_DEMO_DID, &ResolutionInputMetadata::default())

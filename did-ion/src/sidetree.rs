@@ -2,21 +2,21 @@ use anyhow::{anyhow, bail, ensure, Context, Error as AError, Result as AResult};
 use async_trait::async_trait;
 use core::fmt::Debug;
 use json_patch::Patch;
-use reqwest::{header, Client, StatusCode};
+use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
-use ssi::did::{
+use ssi_core::one_or_many::OneOrMany;
+use ssi_dids::did_resolve::{
+    DIDResolver, DocumentMetadata, HTTPDIDResolver, ResolutionInputMetadata, ResolutionMetadata,
+    ERROR_INVALID_DID,
+};
+use ssi_dids::{
     DIDCreate, DIDDeactivate, DIDDocumentOperation, DIDMethod, DIDMethodError,
     DIDMethodTransaction, DIDRecover, DIDUpdate, Document, Service, ServiceEndpoint,
     VerificationRelationship,
 };
-use ssi::did_resolve::{
-    DIDResolver, DocumentMetadata, HTTPDIDResolver, ResolutionInputMetadata, ResolutionMetadata,
-    ERROR_INVALID_DID,
-};
-use ssi::jwk::{Algorithm, Base64urlUInt, JWK};
-use ssi::jws::Header;
-use ssi::one_or_many::OneOrMany;
+use ssi_jwk::{Algorithm, Base64urlUInt, JWK};
+use ssi_jws::Header;
 use std::convert::TryFrom;
 use std::fmt;
 use std::marker::PhantomData;
@@ -315,7 +315,7 @@ pub trait Sidetree {
             .context("Convert update key to PublicKeyJwk for Update operation")?;
         let canonicalized_update_pk = Self::json_canonicalization_scheme(&update_pk)
             .context("Canonicalize update public key for reveal value for Deactivate operation")?;
-        let update_reveal_value = Self::reveal_value(&canonicalized_update_pk.as_bytes());
+        let update_reveal_value = Self::reveal_value(canonicalized_update_pk.as_bytes());
 
         ensure!(
             new_update_pk != &update_pk,
@@ -323,7 +323,7 @@ pub trait Sidetree {
         );
 
         let new_update_commitment =
-            Self::commitment_scheme(&new_update_pk).context("Generate new update commitment")?;
+            Self::commitment_scheme(new_update_pk).context("Generate new update commitment")?;
 
         let update_operation_delta_object = Delta {
             patches,
@@ -339,7 +339,7 @@ pub trait Sidetree {
             update_key: update_pk,
             delta_hash,
         };
-        let signed_data = ssi::jwt::encode_sign(algorithm, &claims, update_key)
+        let signed_data = ssi_jwt::encode_sign(algorithm, &claims, update_key)
             .context("Sign Update Operation")?;
         let update_op = UpdateOperation {
             did_suffix,
@@ -372,11 +372,11 @@ pub trait Sidetree {
         );
         let canonicalized_recovery_pk = Self::json_canonicalization_scheme(&recovery_pk)
             .context("Canonicalize recovery public key for reveal value for Recover operation")?;
-        let recover_reveal_value = Self::reveal_value(&canonicalized_recovery_pk.as_bytes());
+        let recover_reveal_value = Self::reveal_value(canonicalized_recovery_pk.as_bytes());
         let new_update_commitment =
-            Self::commitment_scheme(&new_update_pk).context("Generate new update commitment")?;
+            Self::commitment_scheme(new_update_pk).context("Generate new update commitment")?;
         let new_recovery_commitment =
-            Self::commitment_scheme(&new_recovery_pk).context("Generate new update commitment")?;
+            Self::commitment_scheme(new_recovery_pk).context("Generate new update commitment")?;
 
         let recover_operation_delta_object = Delta {
             patches,
@@ -394,7 +394,7 @@ pub trait Sidetree {
             delta_hash,
             anchor_origin: None,
         };
-        let signed_data = ssi::jwt::encode_sign(algorithm, &claims, recovery_key)
+        let signed_data = ssi_jwt::encode_sign(algorithm, &claims, recovery_key)
             .context("Sign Recover Operation")?;
         let recover_op = RecoverOperation {
             did_suffix,
@@ -448,13 +448,13 @@ pub trait Sidetree {
         let canonicalized_recovery_pk = Self::json_canonicalization_scheme(&recovery_pk).context(
             "Canonicalize recovery public key for reveal value for Deactivate operation",
         )?;
-        let recover_reveal_value = Self::reveal_value(&canonicalized_recovery_pk.as_bytes());
+        let recover_reveal_value = Self::reveal_value(canonicalized_recovery_pk.as_bytes());
         let algorithm = Self::SIGNATURE_ALGORITHM;
         let claims = DeactivateClaims {
             did_suffix: did_suffix.clone(),
             recovery_key: recovery_pk,
         };
-        let signed_data = ssi::jwt::encode_sign(algorithm, &claims, &recovery_key)
+        let signed_data = ssi_jwt::encode_sign(algorithm, &claims, &recovery_key)
             .context("Sign Deactivate Operation")?;
         let recover_op = DeactivateOperation {
             did_suffix,
@@ -511,6 +511,7 @@ pub enum Operation {
 /// Partially verified DID Create operation
 ///
 /// Converted from [CreateOperation].
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PartiallyVerifiedCreateOperation {
     did_suffix: DIDSuffix,
@@ -533,6 +534,7 @@ pub struct PartiallyVerifiedUpdateOperation {
 /// Partially verified DID Recovery operation
 ///
 /// Converted from [RecoverOperation].
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PartiallyVerifiedRecoverOperation {
     reveal_value: String,
@@ -622,10 +624,10 @@ fn ensure_reveal_commitment<S: Sidetree>(
     let canonicalized_public_key =
         S::json_canonicalization_scheme(&pk).context("Canonicalize JWK")?;
     let commitment_value = canonicalized_public_key.as_bytes();
-    let computed_reveal_value = S::reveal_value(&commitment_value);
+    let computed_reveal_value = S::reveal_value(commitment_value);
     ensure!(&computed_reveal_value == reveal_value);
     let computed_commitment =
-        S::commitment_scheme(&pk).context("Unable to compute public key commitment")?;
+        S::commitment_scheme(pk).context("Unable to compute public key commitment")?;
     ensure!(&computed_commitment == recovery_commitment);
     Ok(())
 }
@@ -670,7 +672,7 @@ impl PartiallyVerifiedOperation {
                     .update_commitment()
                     .ok_or(SidetreeError::MissingUpdateCommitment)?;
                 ensure_reveal_commitment::<S>(
-                    &update_commitment,
+                    update_commitment,
                     &update.reveal_value,
                     &update.signed_update_key,
                 )?;
@@ -680,7 +682,7 @@ impl PartiallyVerifiedOperation {
                     .recovery_commitment()
                     .ok_or(SidetreeError::MissingRecoveryCommitment)?;
                 ensure_reveal_commitment::<S>(
-                    &recovery_commitment,
+                    recovery_commitment,
                     &recover.reveal_value,
                     &recover.signed_recovery_key,
                 )?;
@@ -700,7 +702,7 @@ impl PartiallyVerifiedOperation {
                     .recovery_commitment()
                     .ok_or(SidetreeError::MissingRecoveryCommitment)?;
                 ensure_reveal_commitment::<S>(
-                    &recovery_commitment,
+                    recovery_commitment,
                     &deactivate.reveal_value,
                     &deactivate.signed_recovery_key,
                 )?;
@@ -863,7 +865,7 @@ impl SidetreeOperation for DeactivateOperation {
 /// [DID Suffix](https://identity.foundation/sidetree/spec/v1.0.0/#did-suffix)
 ///
 /// Unique identifier string within a Sidetree DID (short or long-form)
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DIDSuffix(pub String);
 
 impl fmt::Display for DIDSuffix {
@@ -1234,13 +1236,13 @@ pub struct DeactivateClaims {
 
 /// Public Key JWK (JSON Web Key)
 ///
-/// Wraps [ssi::jwk::JWK], while allowing a `nonce` property, and disallowing private key
+/// Wraps [ssi_jwk::JWK], while allowing a `nonce` property, and disallowing private key
 /// properties ("d").
 ///
 /// Sidetree may allow a `nonce` property in public key JWKs ([§6.2.2 JWK Nonce][jwkn]).
 ///
 /// [jwkn]: https://identity.foundation/sidetree/spec/#jwk-nonce
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublicKeyJwk {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1302,7 +1304,9 @@ impl<S: Sidetree> FromStr for SidetreeDID<S> {
         if let Some(network) = S::NETWORK {
             ensure!(parts.next() == Some(network), "Sidetree network mismatch");
         }
-        let did_suffix_str = parts.next().ok_or(anyhow!("Missing Sidetree DID Suffix"))?;
+        let did_suffix_str = parts
+            .next()
+            .ok_or_else(|| anyhow!("Missing Sidetree DID Suffix"))?;
         let did_suffix = DIDSuffix(did_suffix_str.to_string());
         S::validate_did_suffix(&did_suffix).context("Validate Sidetree DID Suffix")?;
         let create_operation_data_opt = parts.next();
@@ -1409,7 +1413,7 @@ impl<S: Sidetree> SidetreeClient<S> {
     pub fn new(api_url_opt: Option<String>) -> Self {
         let resolver_opt = api_url_opt
             .as_ref()
-            .map(|url| HTTPSidetreeDIDResolver::new(&url));
+            .map(|url| HTTPSidetreeDIDResolver::new(url));
         Self {
             endpoint: api_url_opt,
             resolver: resolver_opt,
@@ -1419,7 +1423,7 @@ impl<S: Sidetree> SidetreeClient<S> {
 
 /// Check that a JWK is Secp256k1
 pub fn is_secp256k1(jwk: &JWK) -> bool {
-    matches!(jwk, JWK {params: ssi::jwk::Params::EC(ssi::jwk::ECParams { curve: Some(curve), ..}), ..} if curve == "secp256k1")
+    matches!(jwk, JWK {params: ssi_jwk::Params::EC(ssi_jwk::ECParams { curve: Some(curve), ..}), ..} if curve == "secp256k1")
 }
 
 struct NoOpResolver;
@@ -1449,10 +1453,10 @@ fn new_did_state<S: Sidetree>(
     recovery_key: Option<JWK>,
     verification_key: Option<JWK>,
 ) -> AResult<(PublicKeyJwk, PublicKeyJwk, Vec<DIDStatePatch>)> {
-    let update_key = update_key.ok_or(anyhow!("Missing required update key"))?;
+    let update_key = update_key.ok_or_else(|| anyhow!("Missing required update key"))?;
     S::validate_key(&update_key).context("Validate update key")?;
     let update_pk = PublicKeyJwk::try_from(update_key.to_public()).context("Convert update key")?;
-    let recovery_key = recovery_key.ok_or(anyhow!("Missing required recovery key"))?;
+    let recovery_key = recovery_key.ok_or_else(|| anyhow!("Missing required recovery key"))?;
     S::validate_key(&recovery_key).context("Validate recovery key")?;
     let recovery_pk =
         PublicKeyJwk::try_from(recovery_key.to_public()).context("Convert recovery key")?;
@@ -1593,7 +1597,7 @@ impl<S: Sidetree + Send + Sync> DIDMethod for SidetreeClient<S> {
             verification_key,
             options,
         } = create;
-        for opt in options.keys() {
+        if let Some(opt) = options.keys().next() {
             return Err(DIDMethodError::OptionNotSupported {
                 operation: "create",
                 option: opt.clone(),
@@ -1615,14 +1619,14 @@ impl<S: Sidetree + Send + Sync> DIDMethod for SidetreeClient<S> {
         let endpoint = self
             .endpoint
             .as_ref()
-            .ok_or(anyhow!("Missing Sidetree REST API endpoint"))?;
+            .ok_or_else(|| anyhow!("Missing Sidetree REST API endpoint"))?;
         let url = format!("{}operations/", endpoint);
         let client = Client::builder().build().context("Build HTTP client")?;
         let resp = client
             .post(url)
             .json(&op)
             .header("Accept", "application/json")
-            .header("User-Agent", ssi::USER_AGENT)
+            .header("User-Agent", crate::USER_AGENT)
             .send()
             .await
             .context("Send HTTP request")?;
@@ -1673,14 +1677,15 @@ impl<S: Sidetree + Send + Sync> DIDMethod for SidetreeClient<S> {
             options,
         } = update;
         let did = SidetreeDID::<S>::from_str(&did).context("Parse Sidetree DID")?;
-        for opt in options.keys() {
+        if let Some(opt) = options.keys().next() {
             return Err(DIDMethodError::OptionNotSupported {
                 operation: "update",
                 option: opt.clone(),
             });
         }
-        let update_key = update_key.ok_or(anyhow!("Missing required new update key"))?;
-        let new_update_key = new_update_key.ok_or(anyhow!("Missing required new update key"))?;
+        let update_key = update_key.ok_or_else(|| anyhow!("Missing required new update key"))?;
+        let new_update_key =
+            new_update_key.ok_or_else(|| anyhow!("Missing required new update key"))?;
         S::validate_key(&new_update_key).context("Validate update key")?;
         let new_update_pk =
             PublicKeyJwk::try_from(new_update_key.to_public()).context("Convert new update key")?;
@@ -1705,13 +1710,13 @@ impl<S: Sidetree + Send + Sync> DIDMethod for SidetreeClient<S> {
         } = recover;
         let did = SidetreeDID::<S>::from_str(&did).context("Parse Sidetree DID")?;
         let did_suffix = DIDSuffix::from(did);
-        for opt in options.keys() {
+        if let Some(opt) = options.keys().next() {
             return Err(DIDMethodError::OptionNotSupported {
                 operation: "recover",
                 option: opt.clone(),
             });
         }
-        let recovery_key = recovery_key.ok_or(anyhow!("Missing required recovery key"))?;
+        let recovery_key = recovery_key.ok_or_else(|| anyhow!("Missing required recovery key"))?;
         let (new_update_pk, new_recovery_pk, patches) =
             new_did_state::<S>(new_update_key, new_recovery_key, new_verification_key)
                 .context("Prepare keys for DID recovery")?;
@@ -1733,10 +1738,9 @@ impl<S: Sidetree + Send + Sync> DIDMethod for SidetreeClient<S> {
     ) -> Result<DIDMethodTransaction, DIDMethodError> {
         let DIDDeactivate { did, key, options } = deactivate;
         let did = SidetreeDID::<S>::from_str(&did).context("Parse Sidetree DID")?;
-        let recovery_key = key.ok_or(anyhow!(
-            "Missing required recovery key for DID deactivation"
-        ))?;
-        for opt in options.keys() {
+        let recovery_key =
+            key.ok_or_else(|| anyhow!("Missing required recovery key for DID deactivation"))?;
+        if let Some(opt) = options.keys().next() {
             return Err(DIDMethodError::OptionNotSupported {
                 operation: "deactivate",
                 option: opt.clone(),
@@ -1764,7 +1768,7 @@ impl<S: Sidetree> SidetreeClient<S> {
         let mut value = tx.value;
         let op_value = value
             .get_mut("sidetreeOperation")
-            .ok_or(anyhow!("Missing sidetreeOperation property"))?
+            .ok_or_else(|| anyhow!("Missing sidetreeOperation property"))?
             .take();
         let op: Operation =
             serde_json::from_value(op_value).context("Convert value to operation")?;
@@ -1803,10 +1807,10 @@ impl<S: Sidetree + Send + Sync> DIDResolver for HTTPSidetreeDIDResolver<S> {
 pub enum JWSDecodeVerifyError {
     /// Unable to split JWS
     #[error("Unable to split JWS")]
-    SplitJWS(#[source] ssi::error::Error),
+    SplitJWS(#[source] ssi_jws::Error),
     /// Unable to decode JWS parts
     #[error("Unable to decode JWS parts")]
-    DecodeJWSParts(#[source] ssi::error::Error),
+    DecodeJWSParts(#[source] ssi_jws::Error),
     /// Deserialize JWS payload
     #[error("Deserialize JWS payload")]
     DeserializeJWSPayload(#[source] serde_json::Error),
@@ -1815,12 +1819,12 @@ pub enum JWSDecodeVerifyError {
     JWKFromPublicKeyJwk(#[source] JWKFromPublicKeyJwkError),
     /// Unable to verify JWS
     #[error("Unable to verify JWS")]
-    VerifyJWS(#[source] ssi::error::Error),
+    VerifyJWS(#[source] ssi_jws::Error),
 }
 
 /// Decode and verify JWS with public key inside payload
 ///
-/// Similar to [ssi::jwt::decode_verify] or [ssi::jws::decode_verify], but for when the payload (claims) must be parsed to
+/// Similar to [ssi_jwt::decode_verify] or [ssi_jws::decode_verify], but for when the payload (claims) must be parsed to
 /// determine the public key.
 ///
 /// This function decodes and verifies a JWS/JWT, where the public key is expected to be found
@@ -1831,12 +1835,12 @@ pub enum JWSDecodeVerifyError {
 /// `get_key` function).
 ///
 /// The `get_key` function uses [PublicKeyJwk], for the convenience of this crate, but this
-/// function converts it to [ssi::jwk::JWK] internally.
+/// function converts it to [ssi_jwk::JWK] internally.
 pub fn jws_decode_verify_inner<Claims: DeserializeOwned>(
     jwt: &str,
     get_key: impl FnOnce(&Claims) -> &PublicKeyJwk,
 ) -> Result<(Header, Claims), JWSDecodeVerifyError> {
-    use ssi::jws::{decode_jws_parts, split_jws, verify_bytes, DecodedJWS};
+    use ssi_jws::{decode_jws_parts, split_jws, verify_bytes, DecodedJWS};
     let (header_b64, payload_enc, signature_b64) =
         split_jws(jwt).map_err(JWSDecodeVerifyError::SplitJWS)?;
     let DecodedJWS {
@@ -1868,7 +1872,7 @@ mod tests {
             Ok(key)
         }
         fn validate_key(key: &JWK) -> Result<(), SidetreeError> {
-            if !is_secp256k1(&key) {
+            if !is_secp256k1(key) {
                 return Err(anyhow!("Key must be Secp256k1").into());
             }
             Ok(())
@@ -2023,16 +2027,18 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "secp256k1")]
     fn test_longform_did_construction() {
         let create_operation = match &*CREATE_OPERATION {
             Operation::Create(op) => op,
             _ => panic!("Expected Create Operation"),
         };
-        let did = SidetreeDID::<Example>::from_create_operation(&create_operation).unwrap();
+        let did = SidetreeDID::<Example>::from_create_operation(create_operation).unwrap();
         assert_eq!(did.to_string(), LONGFORM_DID);
     }
 
     #[test]
+    #[cfg(feature = "secp256k1")]
     fn test_update_verify_reveal() {
         let create_pvo = CREATE_OPERATION
             .clone()
@@ -2046,6 +2052,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "secp256k1")]
     fn test_recover_verify_reveal() {
         let create_pvo = CREATE_OPERATION
             .clone()
@@ -2059,6 +2066,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "secp256k1")]
     fn test_deactivate_verify_reveal() {
         let recover_pvo = RECOVER_OPERATION
             .clone()

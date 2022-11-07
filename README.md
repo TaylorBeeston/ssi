@@ -4,7 +4,7 @@
 [![](https://img.shields.io/twitter/follow/spruceid?label=Follow&style=social)](https://twitter.com/spruceid)
 
 SSI's documentation is currently packaged with the DIDKit documentation
-[here](https://spruceid.dev/docs/didkit/).
+[here](https://spruceid.dev/didkit/didkit/).
 
 # SSI
 
@@ -14,8 +14,6 @@ safety, simple dependency web, and suitability across different platforms
 including embedded systems. This library is embedded in the the cross-platform
 [`didkit`](https://github.com/spruceid/didkit) library as a core dependency.
 
-![DIDKit core components](https://user-images.githubusercontent.com/37127325/132885372-9cdf586e-ba6f-44c8-8b83-f72f16d86107.png)
-
 ## Security Audits
 
 ssi has undergone the following security reviews:
@@ -24,13 +22,6 @@ ssi has undergone the following security reviews:
 We are setting up a process to accept contributions. Please feel free to open
 issues or PRs in the interim, but we cannot merge external changes until this
 process is in place.
-
-## Dependencies
-
-```
-clang
-openssl-devel
-```
 
 ## Install
 

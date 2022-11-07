@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 
-use ssi::did::{DIDMethod, Document};
-use ssi::did_resolve::{
+use ssi_dids::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata, ERROR_INVALID_DID,
     ERROR_NOT_FOUND, TYPE_DID_LD_JSON,
 };
-use ssi::USER_AGENT;
+use ssi_dids::{DIDMethod, Document};
+pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 // For testing, enable handling requests at localhost.
 #[cfg(test)]
@@ -113,10 +113,7 @@ impl DIDResolver for DIDWeb {
             Ok(c) => c,
             Err(err) => {
                 return (
-                    ResolutionMetadata::from_error(&format!(
-                        "Error building HTTP client: {}",
-                        err.to_string()
-                    )),
+                    ResolutionMetadata::from_error(&format!("Error building HTTP client: {}", err)),
                     Vec::new(),
                     None,
                 )
@@ -132,7 +129,7 @@ impl DIDResolver for DIDWeb {
                 return (
                     ResolutionMetadata::from_error(&format!(
                         "Error sending HTTP request : {}",
-                        err.to_string()
+                        err
                     )),
                     Vec::new(),
                     None,
@@ -253,7 +250,7 @@ mod tests {
                 let (mut parts, body) = Response::<Body>::default().into_parts();
                 parts.status = hyper::StatusCode::NOT_FOUND;
                 let response = Response::from_parts(parts, body);
-                return Ok::<_, hyper::Error>(response);
+                Ok::<_, hyper::Error>(response)
             }))
         });
         let server = Server::try_bind(&addr)?.serve(make_svc);
@@ -289,8 +286,9 @@ mod tests {
 
     #[tokio::test]
     async fn credential_prove_verify_did_web() {
-        use ssi::jwk::JWK;
-        use ssi::vc::{Credential, Issuer, LinkedDataProofOptions, URI};
+        use ssi_jwk::JWK;
+        use ssi_ldp::LinkedDataProofOptions;
+        use ssi_vc::{Credential, Issuer, URI};
         let vc_str = r###"{
             "@context": "https://www.w3.org/2018/credentials/v1",
             "type": ["VerifiableCredential"],
@@ -309,7 +307,7 @@ mod tests {
         let key: JWK = serde_json::from_str(key_str).unwrap();
         let mut issue_options = LinkedDataProofOptions::default();
         issue_options.verification_method = Some(URI::String("did:web:localhost#key1".to_string()));
-        let mut context_loader = ssi::jsonld::ContextLoader::default();
+        let mut context_loader = ssi_json_ld::ContextLoader::default();
         let proof = vc
             .generate_proof(&key, &issue_options, &DIDWeb, &mut context_loader)
             .await
@@ -323,7 +321,11 @@ mod tests {
 
         // test that issuer property is used for verification
         vc.issuer = Some(Issuer::URI(URI::String("did:example:bad".to_string())));
-        assert!(vc.verify(None, &DIDWeb, &mut context_loader).await.errors.len() > 0);
+        assert!(!vc
+            .verify(None, &DIDWeb, &mut context_loader)
+            .await
+            .errors
+            .is_empty());
 
         PROXY.with(|proxy| {
             proxy.replace(None);

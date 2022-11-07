@@ -23,7 +23,7 @@ async fn main() {
             use std::io::Read;
             let mut vc_jwt = String::new();
             reader.read_to_string(&mut vc_jwt).unwrap();
-            if vc_jwt.starts_with("{") {
+            if vc_jwt.starts_with('{') {
                 panic!("Input must be a compact JWT");
             }
             ssi::vc::CredentialOrJWT::JWT(vc_jwt)
@@ -52,8 +52,10 @@ async fn main() {
                 .await
                 .unwrap();
             vp.add_proof(proof);
-            let result = vp.verify(Some(proof_options), resolver, &mut context_loader).await;
-            if result.errors.len() > 0 {
+            let result = vp
+                .verify(Some(proof_options), resolver, &mut context_loader)
+                .await;
+            if !result.errors.is_empty() {
                 panic!("verify failed: {:#?}", result);
             }
             let writer = std::io::BufWriter::new(std::io::stdout());
@@ -67,8 +69,9 @@ async fn main() {
                 .await
                 .unwrap();
             print!("{}", jwt);
-            let result = ssi::vc::Presentation::verify_jwt(&jwt, None, resolver, &mut context_loader).await;
-            if result.errors.len() > 0 {
+            let result =
+                ssi::vc::Presentation::verify_jwt(&jwt, None, resolver, &mut context_loader).await;
+            if !result.errors.is_empty() {
                 panic!("verify failed: {:#?}", result);
             }
         }

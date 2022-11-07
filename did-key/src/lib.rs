@@ -3,20 +3,20 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use thiserror::Error;
 
-use ssi::did::{
-    Context, Contexts, DIDMethod, Document, Source, VerificationMethod, VerificationMethodMap,
-    DEFAULT_CONTEXT, DIDURL,
-};
-use ssi::did_resolve::{
+use ssi_dids::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata, ERROR_INVALID_DID,
     ERROR_NOT_FOUND,
 };
+use ssi_dids::{
+    Context, Contexts, DIDMethod, Document, Source, VerificationMethod, VerificationMethodMap,
+    DEFAULT_CONTEXT, DIDURL,
+};
 #[cfg(feature = "secp256r1")]
-use ssi::jwk::p256_parse;
-use ssi::jwk::rsa_x509_pub_parse;
+use ssi_jwk::p256_parse;
+use ssi_jwk::rsa_x509_pub_parse;
 #[cfg(feature = "secp256k1")]
-use ssi::jwk::secp256k1_parse;
-use ssi::jwk::{Base64urlUInt, OctetParams, Params, JWK};
+use ssi_jwk::secp256k1_parse;
+use ssi_jwk::{Base64urlUInt, OctetParams, Params, JWK};
 
 const DID_KEY_ED25519_PREFIX: [u8; 2] = [0xed, 0x01];
 const DID_KEY_SECP256K1_PREFIX: [u8; 2] = [0xe7, 0x01];
@@ -143,7 +143,7 @@ impl DIDResolver for DIDKey {
                         "https://w3id.org/security#EcdsaSecp256k1VerificationKey2019".to_string();
                     jwk
                 }
-                Err(err) => return (ResolutionMetadata::from_error(&err), None, None),
+                Err(err) => return (ResolutionMetadata::from_error(&err.to_string()), None, None),
             }
             #[cfg(not(feature = "secp256k1"))]
             return (
@@ -169,8 +169,8 @@ impl DIDResolver for DIDKey {
                 None,
             );
         } else if data[0] == DID_KEY_P384_PREFIX[0] && data[1] == DID_KEY_P384_PREFIX[1] {
-            #[cfg(feature = "ssi_p384")]
-            match ssi::jwk::p384_parse(&data[2..]) {
+            #[cfg(feature = "secp384r1")]
+            match ssi_jwk::p384_parse(&data[2..]) {
                 Ok(jwk) => {
                     vm_type = "JsonWebKey2020".to_string();
                     vm_type_iri = "https://w3id.org/security#JsonWebKey2020".to_string();
@@ -178,7 +178,7 @@ impl DIDResolver for DIDKey {
                 }
                 Err(err) => return (ResolutionMetadata::from_error(&err.to_string()), None, None),
             }
-            #[cfg(not(feature = "ssi_p384"))]
+            #[cfg(not(feature = "secp384r1"))]
             return (
                 ResolutionMetadata::from_error("did:key type P-384 not supported"),
                 None,
@@ -307,7 +307,6 @@ impl DIDMethod for DIDKey {
                     #[cfg(feature = "secp256k1")]
                     "secp256k1" => {
                         use k256::elliptic_curve::sec1::ToEncodedPoint;
-                        use std::convert::TryFrom;
                         let pk = match k256::PublicKey::try_from(params) {
                             Ok(pk) => pk,
                             Err(_err) => return None,
@@ -325,7 +324,6 @@ impl DIDMethod for DIDKey {
                     #[cfg(feature = "secp256r1")]
                     "P-256" => {
                         use p256::elliptic_curve::sec1::ToEncodedPoint;
-                        use std::convert::TryFrom;
                         let pk = match p256::PublicKey::try_from(params) {
                             Ok(pk) => pk,
                             Err(_err) => return None,
@@ -340,9 +338,9 @@ impl DIDMethod for DIDKey {
                                 .concat(),
                             )
                     }
-                    #[cfg(feature = "ssi_p384")]
+                    #[cfg(feature = "secp384r1")]
                     "P-384" => {
-                        let pk_bytes = match ssi::jwk::p384_serialize(params) {
+                        let pk_bytes = match ssi_jwk::serialize_p384(params) {
                             Ok(pk) => pk,
                             Err(_err) => return None,
                         };
@@ -377,14 +375,14 @@ impl DIDMethod for DIDKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ssi::did::Resource;
-    use ssi::did_resolve::{dereference, Content, DereferencingInputMetadata};
+    use ssi_dids::did_resolve::{dereference, Content, DereferencingInputMetadata};
+    use ssi_dids::Resource;
 
     #[async_std::test]
     async fn from_did_key() {
         let vm = "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH#z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH";
         let (res_meta, object, _meta) =
-            dereference(&DIDKey, &vm, &DereferencingInputMetadata::default()).await;
+            dereference(&DIDKey, vm, &DereferencingInputMetadata::default()).await;
         assert_eq!(res_meta.error, None);
         let vm = match object {
             Content::Object(Resource::VerificationMethod(vm)) => vm,
@@ -404,7 +402,7 @@ mod tests {
 
         let vm = "did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme#zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme";
         let (res_meta, object, _meta) =
-            dereference(&DIDKey, &vm, &DereferencingInputMetadata::default()).await;
+            dereference(&DIDKey, vm, &DereferencingInputMetadata::default()).await;
         assert_eq!(res_meta.error, None);
         let vm = match object {
             Content::Object(Resource::VerificationMethod(vm)) => vm,
@@ -429,7 +427,7 @@ mod tests {
 
         let vm = "did:key:zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169#zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169";
         let (res_meta, object, _meta) =
-            dereference(&DIDKey, &vm, &DereferencingInputMetadata::default()).await;
+            dereference(&DIDKey, vm, &DereferencingInputMetadata::default()).await;
         assert_eq!(res_meta.error, None);
         let vm = match object {
             Content::Object(Resource::VerificationMethod(vm)) => vm,
@@ -463,7 +461,7 @@ mod tests {
 
         let vm = "did:key:zUC7K4ndUaGZgV7Cp2yJy6JtMoUHY6u7tkcSYUvPrEidqBmLCTLmi6d5WvwnUqejscAkERJ3bfjEiSYtdPkRSE8kSa11hFBr4sTgnbZ95SJj19PN2jdvJjyzpSZgxkyyxNnBNnY#zUC7K4ndUaGZgV7Cp2yJy6JtMoUHY6u7tkcSYUvPrEidqBmLCTLmi6d5WvwnUqejscAkERJ3bfjEiSYtdPkRSE8kSa11hFBr4sTgnbZ95SJj19PN2jdvJjyzpSZgxkyyxNnBNnY";
         let (res_meta, object, _meta) =
-            dereference(&DIDKey, &vm, &DereferencingInputMetadata::default()).await;
+            dereference(&DIDKey, vm, &DereferencingInputMetadata::default()).await;
         assert_eq!(res_meta.error, None);
         let vm = match object {
             Content::Object(Resource::VerificationMethod(vm)) => vm,
@@ -497,7 +495,7 @@ mod tests {
 
         let vm = "did:key:z4MXj1wBzi9jUstyPMS4jQqB6KdJaiatPkAtVtGc6bQEQEEsKTic4G7Rou3iBf9vPmT5dbkm9qsZsuVNjq8HCuW1w24nhBFGkRE4cd2Uf2tfrB3N7h4mnyPp1BF3ZttHTYv3DLUPi1zMdkULiow3M1GfXkoC6DoxDUm1jmN6GBj22SjVsr6dxezRVQc7aj9TxE7JLbMH1wh5X3kA58H3DFW8rnYMakFGbca5CB2Jf6CnGQZmL7o5uJAdTwXfy2iiiyPxXEGerMhHwhjTA1mKYobyk2CpeEcmvynADfNZ5MBvcCS7m3XkFCMNUYBS9NQ3fze6vMSUPsNa6GVYmKx2x6JrdEjCk3qRMMmyjnjCMfR4pXbRMZa3i#z4MXj1wBzi9jUstyPMS4jQqB6KdJaiatPkAtVtGc6bQEQEEsKTic4G7Rou3iBf9vPmT5dbkm9qsZsuVNjq8HCuW1w24nhBFGkRE4cd2Uf2tfrB3N7h4mnyPp1BF3ZttHTYv3DLUPi1zMdkULiow3M1GfXkoC6DoxDUm1jmN6GBj22SjVsr6dxezRVQc7aj9TxE7JLbMH1wh5X3kA58H3DFW8rnYMakFGbca5CB2Jf6CnGQZmL7o5uJAdTwXfy2iiiyPxXEGerMhHwhjTA1mKYobyk2CpeEcmvynADfNZ5MBvcCS7m3XkFCMNUYBS9NQ3fze6vMSUPsNa6GVYmKx2x6JrdEjCk3qRMMmyjnjCMfR4pXbRMZa3i";
         let (res_meta, object, _meta) =
-            dereference(&DIDKey, &vm, &DereferencingInputMetadata::default()).await;
+            dereference(&DIDKey, vm, &DereferencingInputMetadata::default()).await;
         assert_eq!(res_meta.error, None);
         let vm = match object {
             Content::Object(Resource::VerificationMethod(vm)) => vm,
@@ -520,7 +518,7 @@ mod tests {
 
     #[async_std::test]
     async fn credential_prove_verify_did_key() {
-        use ssi::vc::{get_verification_method, Credential, Issuer, LinkedDataProofOptions, URI};
+        use ssi_vc::{get_verification_method, Credential, Issuer, LinkedDataProofOptions, URI};
         let vc_str = r###"{
             "@context": "https://www.w3.org/2018/credentials/v1",
             "id": "http://example.org/credentials/3731",
@@ -537,7 +535,7 @@ mod tests {
         let did = DIDKey.generate(&Source::Key(&key)).unwrap();
         let verification_method = get_verification_method(&did, &DIDKey).await.unwrap();
         let mut issue_options = LinkedDataProofOptions::default();
-        let mut context_loader = ssi::jsonld::ContextLoader::default();
+        let mut context_loader = ssi_json_ld::ContextLoader::default();
         vc.issuer = Some(Issuer::URI(URI::String(did.clone())));
         issue_options.verification_method = Some(URI::String(verification_method));
         let proof = vc
@@ -553,14 +551,18 @@ mod tests {
 
         // test that issuer is verified
         vc.issuer = Some(Issuer::URI(URI::String("did:example:bad".to_string())));
-        assert!(vc.verify(None, &DIDKey, &mut context_loader).await.errors.len() > 0);
+        assert!(!vc
+            .verify(None, &DIDKey, &mut context_loader)
+            .await
+            .errors
+            .is_empty());
     }
 
     #[async_std::test]
     #[cfg(feature = "secp256k1")]
     async fn credential_prove_verify_did_key_secp256k1() {
         use serde_json::json;
-        use ssi::vc::{get_verification_method, Credential, Issuer, LinkedDataProofOptions, URI};
+        use ssi_vc::{get_verification_method, Credential, Issuer, LinkedDataProofOptions, URI};
         let key = JWK::generate_secp256k1().unwrap();
         let did = DIDKey.generate(&Source::Key(&key)).unwrap();
         let mut vc: Credential = serde_json::from_value(json!({
@@ -577,7 +579,7 @@ mod tests {
 
         let verification_method = get_verification_method(&did, &DIDKey).await.unwrap();
         let mut issue_options = LinkedDataProofOptions::default();
-        let mut context_loader = ssi::jsonld::ContextLoader::default();
+        let mut context_loader = ssi_json_ld::ContextLoader::default();
         issue_options.verification_method = Some(URI::String(verification_method));
         let proof = vc
             .generate_proof(&key, &issue_options, &DIDKey, &mut context_loader)
@@ -592,14 +594,18 @@ mod tests {
 
         // test that issuer is verified
         vc.issuer = Some(Issuer::URI(URI::String("did:example:bad".to_string())));
-        assert!(vc.verify(None, &DIDKey, &mut context_loader).await.errors.len() > 0);
+        assert!(!vc
+            .verify(None, &DIDKey, &mut context_loader)
+            .await
+            .errors
+            .is_empty());
     }
 
     #[async_std::test]
     #[cfg(feature = "secp256r1")]
     async fn credential_prove_verify_did_key_p256() {
         use serde_json::json;
-        use ssi::vc::{get_verification_method, Credential, Issuer, LinkedDataProofOptions, URI};
+        use ssi_vc::{get_verification_method, Credential, Issuer, LinkedDataProofOptions, URI};
         let key = JWK::generate_p256().unwrap();
         let did = DIDKey.generate(&Source::Key(&key)).unwrap();
         let mut vc: Credential = serde_json::from_value(json!({
@@ -616,7 +622,7 @@ mod tests {
 
         let verification_method = get_verification_method(&did, &DIDKey).await.unwrap();
         let mut issue_options = LinkedDataProofOptions::default();
-        let mut context_loader = ssi::jsonld::ContextLoader::default();
+        let mut context_loader = ssi_json_ld::ContextLoader::default();
         issue_options.verification_method = Some(URI::String(verification_method));
         let proof = vc
             .generate_proof(&key, &issue_options, &DIDKey, &mut context_loader)
@@ -631,6 +637,10 @@ mod tests {
 
         // test that issuer is verified
         vc.issuer = Some(Issuer::URI(URI::String("did:example:bad".to_string())));
-        assert!(vc.verify(None, &DIDKey, &mut context_loader).await.errors.len() > 0);
+        assert!(!vc
+            .verify(None, &DIDKey, &mut context_loader)
+            .await
+            .errors
+            .is_empty());
     }
 }
