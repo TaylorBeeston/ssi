@@ -159,6 +159,8 @@ pub const JFF_VC_EDU_PLUGFEST_2022_CONTEXT: &str =
     "https://w3c-ccg.github.io/vc-ed/plugfest-1-2022/jff-vc-edu-plugfest-1-context.json";
 pub const OB_V2_CONTEXT: &str = "https://openbadgespec.org/v2/context.json";
 pub const OB_V3_CONTEXT: &str = "https://imsglobal.github.io/openbadges-specification/context.json";
+pub const OLD_OB_V3_CONTEXT: &str =
+    "https://imsglobal.github.io/openbadges-specification/context.json";
 pub const CHAPI_ALUMNI_CONTEXT: &str = "https://playground.chapi.io/examples/alumni/alumni-v1.json";
 pub const CHAPI_MOVIE_TICKET_CONTEXT: &str =
     "https://playground.chapi.io/examples/movieTicket/ticket-v1.json";
@@ -432,7 +434,7 @@ impl Loader for StaticLoader {
                     Ok(JFF_VC_EDU_PLUGFEST_2022_CONTEXT_DOCUMENT.clone())
                 }
                 OB_V2_CONTEXT => Ok(OB_V2_CONTEXT_DOCUMENT.clone()),
-                OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
+                OB_V3_CONTEXT | OLD_OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
                 CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
                 CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
                 PLUGFEST_V2_CONTEXT => Ok(PLUGFEST_V2_CONTEXT_DOCUMENT.clone()),
