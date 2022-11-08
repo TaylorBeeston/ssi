@@ -367,18 +367,7 @@ impl JWK {
 
         rand_old::rngs::OsRng.fill_bytes(&mut bytes);
 
-        let secret_key = k256::SecretKey::from_bytes(&bytes).unwrap();
-        // SecretKey zeroizes on drop
-        let sk_bytes: &[u8] = secret_key.as_scalar_bytes().as_ref();
-        let public_key = secret_key.public_key();
-        let mut ec_params = ECParams::try_from(&public_key)?;
-        ec_params.ecc_private_key = Some(Base64urlUInt(sk_bytes.to_vec()));
-        Ok(JWK::from(Params::EC(ec_params)))
-    }
-
-    #[cfg(feature = "k256")]
-    pub fn generate_secp256k1_from_bytes(bytes: &[u8]) -> Result<JWK, Error> {
-        let secret_key = k256::SecretKey::from_bytes(bytes).unwrap();
+        let secret_key = k256::SecretKey::from_be_bytes(&bytes).unwrap();
         // SecretKey zeroizes on drop
         let sk_scalar = secret_key.as_scalar_core().to_be_bytes();
         let sk_bytes: &[u8] = sk_scalar.as_ref();
