@@ -386,12 +386,6 @@
     },
     "CertificationOfOrigin": {
       "@context": {
-        "dateOfExport": {
-          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#exportExitDateTime"
-        },
-        "manufacturingCountry": {
-          "@id": "https://w3id.org/traceability#manufacturingCountry"
-        }
       },
       "@id": "https://w3id.org/traceability#CertificationOfOrigin"
     },
@@ -1267,26 +1261,8 @@
     },
     "Event": {
       "@context": {
-        "actor": {
-          "@id": "https://w3id.org/traceability#Organization"
-        },
-        "eventId": {
-          "@id": "https://schema.org/identifier"
-        },
-        "eventTime": {
-          "@id": "https://schema.org/DateTime"
-        },
-        "eventType": {
-          "@id": "https://schema.org/value"
-        },
-        "place": {
-          "@id": "https://w3id.org/traceability#place"
-        },
-        "products": {
-          "@id": "https://w3c-ccg.github.io/hashlink/#hl-url-params"
-        }
       },
-      "@id": "https://schema.org/Event"
+      "@id": "https://w3id.org/traceability#EventCredential"
     },
     "ExternalResource": {
       "@context": {
@@ -1504,6 +1480,59 @@
       "@context": {
       },
       "@id": "https://w3id.org/traceability#FSMATransformingCTECredential"
+    },
+    "FoodDefenseDeficiency": {
+      "@context": {
+        "dateCorrected": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#occurrenceDateTime"
+        },
+        "description": {
+          "@id": "https://schema.org/description"
+        },
+        "number": {
+          "@id": "https://schema.org/identifier"
+        },
+        "proposedCorrectionDate": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#occurrenceDateTime"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodDefenseDeficiency"
+    },
+    "FoodDefenseInspection": {
+      "@context": {
+        "commonInfo": {
+          "@id": "https://w3id.org/traceability#AgricultureInspectionCommonInfo"
+        },
+        "deficiencies": {
+          "@id": "https://w3id.org/traceability#FoodDefenseDeficiency"
+        },
+        "questions": {
+          "@id": "https://w3id.org/traceability#FoodDefenseQuestion"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodDefenseInspection"
+    },
+    "FoodDefenseInspectionCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#FoodDefenseInspectionCredential"
+    },
+    "FoodDefenseQuestion": {
+      "@context": {
+        "facility": {
+          "@id": "https://schema.org/location"
+        },
+        "number": {
+          "@id": "https://schema.org/identifier"
+        },
+        "rating": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#assertion"
+        },
+        "response": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#assertion"
+        }
+      },
+      "@id": "https://w3id.org/traceability#FoodDefenseQuestion"
     },
     "FoodGradeInspection": {
       "@context": {
@@ -3147,7 +3176,7 @@
       },
       "@id": "https://w3id.org/traceability#OrderedItem"
     },
-    "OrganicCertification": {
+    "OrganicCertificate": {
       "@context": {
         "anniversaryDate": {
           "@id": "https://www.gs1.org/voc/certificationEndDate"
@@ -3157,6 +3186,9 @@
         },
         "certifyingAgent": {
           "@id": "https://www.gs1.org/voc/certificationAgency"
+        },
+        "countryOfIssuance": {
+          "@id": "https://www.gs1.org/voc/countryCode"
         },
         "effectiveDate": {
           "@id": "https://www.gs1.org/voc/certificationStartDate"
@@ -3171,12 +3203,12 @@
           "@id": "https://www.gs1.org/voc/certificationStatement"
         }
       },
-      "@id": "https://w3id.org/traceability#OrganicCertification"
+      "@id": "https://w3id.org/traceability#OrganicCertificate"
     },
-    "OrganicCertificationCertificate": {
+    "OrganicCertificateCredential": {
       "@context": {
       },
-      "@id": "https://w3id.org/traceability#OrganicCertificationCertificate"
+      "@id": "https://w3id.org/traceability#OrganicCertificateCredential"
     },
     "OrganicInspection": {
       "@context": {
@@ -3695,6 +3727,48 @@
       },
       "@id": "https://schema.org/Place"
     },
+    "PlantSystemsInspection": {
+      "@context": {
+        "additionalViolations": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#description"
+        },
+        "commonInfo": {
+          "@id": "https://w3id.org/traceability#AgricultureInspectionCommonInfo"
+        },
+        "observationsImprovements": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#description"
+        },
+        "productsPacked": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#specifiedProduct"
+        },
+        "questions": {
+          "@id": "https://w3id.org/traceability#PlantSystemsQuestion"
+        },
+        "summaryOfDeficiencies": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#description"
+        }
+      },
+      "@id": "https://w3id.org/traceability#PlantSystemsInspection"
+    },
+    "PlantSystemsInspectionCredential": {
+      "@context": {
+      },
+      "@id": "https://w3id.org/traceability#PlantSystemsInspectionCredential"
+    },
+    "PlantSystemsQuestion": {
+      "@context": {
+        "code": {
+          "@id": "https://schema.org/identifier"
+        },
+        "pointsDeducted": {
+          "@id": "https://schema.org/ratingValue"
+        },
+        "pointsWorth": {
+          "@id": "https://schema.org/ratingValue"
+        }
+      },
+      "@id": "https://w3id.org/traceability#PlantSystemsQuestion"
+    },
     "PostalAddress": {
       "@context": {
         "addressCountry": {
@@ -3943,8 +4017,8 @@
         "insuranceCost": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#insuranceChargeTotalAmount"
         },
-        "itemsShipped": {
-          "@id": "https://schema.org/itemShipped"
+        "itemsOrdered": {
+          "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#TradeLineItem"
         },
         "orderDate": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#buyerOrderDateTime"
@@ -4074,6 +4148,9 @@
         },
         "importer": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#importerParty"
+        },
+        "licenseNumber": {
+          "@id": "https://schema.org/identifier"
         },
         "manufacturer": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#manufacturerParty"
@@ -4399,6 +4476,9 @@
         "itemCount": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#despatchedQuantity"
         },
+        "name": {
+          "@id": "https://schema.org/name"
+        },
         "netWeight": {
           "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#netWeightMeasure"
         },
@@ -4681,6 +4761,10 @@
       },
       "@id": "https://w3id.org/traceability#Workflow"
     },
+    "dateOfExport": {
+      "@id": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#exportExitDateTime",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
     "description": "https://schema.org/description",
     "id": "@id",
     "identifier": "https://schema.org/identifier",
@@ -4690,6 +4774,7 @@
     },
     "items": "https://schema.org/ItemList",
     "manufacturer": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#manufacturerParty",
+    "manufacturingCountry": "https://service.unece.org/trade/uncefact/vocabulary/uncefact/#manufactureCountry",
     "name": "https://schema.org/name",
     "ppq203": {
       "@context": {
