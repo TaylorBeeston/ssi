@@ -75,6 +75,7 @@ pub const CHAPI_MOVIE_TICKET: &str = include_str!("../chapi-movie-ticket-v1.json
 pub const CLR_V2: &str = include_str!("../clr-2.0.json");
 /// <https://w3id.org/security/data-integrity/v1>
 pub const W3ID_DATA_INTEGRITY: &str = include_str!("../w3id-data-integrity.json");
+pub const DID_CONFIGURATION_V0_0: &str = include_str!("../did-configuration-v0.0.jsonld");
 
 pub const TZ_V2: &str = include_str!("../tz-2021-v2.jsonld");
 pub const TZVM_V1: &str = include_str!("../tzvm-2021-v1.jsonld");
