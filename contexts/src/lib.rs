@@ -63,6 +63,8 @@ pub const JFF_VC_EDU_PLUGFEST_2022: &str = include_str!("../jff-vc-edu-plugfest-
 pub const OBV2: &str = include_str!("../openbadges-v2.json");
 /// <https://purl.imsglobal.org/spec/ob/v3p0/context.json>
 pub const OBV3: &str = include_str!("../openbadges-v3.json");
+/// <https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json>
+pub const OBV301: &str = include_str!("../openbadges-v3.0.1.json");
 /// <https://playground.chapi.io/examples/alumni/alumni-v1.json>
 pub const CHAPI_ALUMNI: &str = include_str!("../chapi-alumni-v1.json");
 /// <https://playground.chapi.io/examples/movieTicket/ticket-v1.json>

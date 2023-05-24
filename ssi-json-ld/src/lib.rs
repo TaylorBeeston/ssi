@@ -161,6 +161,7 @@ pub const OB_V2_CONTEXT: &str = "https://openbadgespec.org/v2/context.json";
 pub const OLD_OB_V3_CONTEXT: &str =
     "https://imsglobal.github.io/openbadges-specification/context.json";
 pub const OB_V3_CONTEXT: &str = "https://purl.imsglobal.org/spec/ob/v3p0/context.json";
+pub const OB_V301_CONTEXT: &str = "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json";
 pub const CHAPI_ALUMNI_CONTEXT: &str = "https://playground.chapi.io/examples/alumni/alumni-v1.json";
 pub const CHAPI_MOVIE_TICKET_CONTEXT: &str =
     "https://playground.chapi.io/examples/movieTicket/ticket-v1.json";
@@ -358,6 +359,12 @@ lazy_static::lazy_static! {
         let iri = Iri::new(OB_V3_CONTEXT).unwrap();
         RemoteDocument::new(doc, iri)
     };
+    pub static ref OB_V301_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
+        let jsonld = ssi_contexts::OBV301;
+        let doc = json::parse(jsonld).unwrap();
+        let iri = Iri::new(OB_V301_CONTEXT).unwrap();
+        RemoteDocument::new(doc, iri)
+    };
     pub static ref CHAPI_ALUMNI_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
         let jsonld = ssi_contexts::CHAPI_ALUMNI;
         let doc = json::parse(jsonld).unwrap();
@@ -427,6 +434,7 @@ impl Loader for StaticLoader {
                 }
                 OB_V2_CONTEXT => Ok(OB_V2_CONTEXT_DOCUMENT.clone()),
                 OB_V3_CONTEXT | OLD_OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
+                OB_V301_CONTEXT => Ok(OB_V301_CONTEXT_DOCUMENT.clone()),
                 CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
                 CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
 
