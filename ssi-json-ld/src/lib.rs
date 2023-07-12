@@ -81,9 +81,10 @@ pub const DID_CONFIGURATION_V0_0_CONTEXT: Iri =
 pub const JFF_VC_EDU_PLUGFEST_2022_2_CONTEXT: Iri =
     iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
 pub const OB_V2_CONTEXT: Iri = iri!("https://openbadgespec.org/v2/context.json");
-pub const OB_V3_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
 pub const OLD_OB_V3_CONTEXT: Iri =
     iri!("https://imsglobal.github.io/openbadges-specification/context.json");
+pub const OB_V3_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
+pub const OB_V301_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json");
 pub const CHAPI_ALUMNI_CONTEXT: Iri =
     iri!("https://playground.chapi.io/examples/alumni/alumni-v1.json");
 pub const CHAPI_MOVIE_TICKET_CONTEXT: Iri =
@@ -266,6 +267,10 @@ lazy_static::lazy_static! {
         PLUGFEST_V2_CONTEXT,
         ssi_contexts::PLUGFEST_V2,
     );
+    pub static ref OB_V301_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        OB_V301_CONTEXT,
+        ssi_contexts::OBV301,
+    );
 }
 
 macro_rules! iri_match {
@@ -356,6 +361,7 @@ impl Loader<IriBuf, Span> for StaticLoader {
                     },
                     OB_V2_CONTEXT => Ok(OB_V2_CONTEXT_DOCUMENT.clone()),
                     OB_V3_CONTEXT | OLD_OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
+                    OB_V301_CONTEXT => Ok(OB_V301_CONTEXT_DOCUMENT.clone()),
                     CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
                     CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
                     PLUGFEST_V2_CONTEXT => Ok(PLUGFEST_V2_CONTEXT_DOCUMENT.clone()),
