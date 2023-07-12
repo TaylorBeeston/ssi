@@ -85,22 +85,8 @@ pub const CLR_V2: &str = include_str!("../clr-2.0.json");
 pub const W3ID_DATA_INTEGRITY: &str = include_str!("../w3id-data-integrity.json");
 pub const DID_CONFIGURATION_V0_0: &str = include_str!("../did-configuration-v0.0.jsonld");
 pub const JFF_VC_EDU_PLUGFEST_2022_2: &str = include_str!("../jff-vc-edu-plugfest-2-context.json");
-/// <https://openbadgespec.org/v2/context.json>
-pub const OBV2: &str = include_str!("../openbadges-v2.json");
-/// <https://purl.imsglobal.org/spec/ob/v3p0/context.json>
-pub const OBV3: &str = include_str!("../openbadges-v3.json");
-/// <https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json>
-pub const OBV301: &str = include_str!("../openbadges-v3.0.1.json");
-/// <https://purl.imsglobal.org/spec/ob/v3p0/extensions.json>
-pub const OBV3_EXTENSIONS: &str = include_str!("../openbadges-v3-extensions.json");
-/// <https://playground.chapi.io/examples/alumni/alumni-v1.json>
-pub const CHAPI_ALUMNI: &str = include_str!("../chapi-alumni-v1.json");
-/// <https://playground.chapi.io/examples/movieTicket/ticket-v1.json>
-pub const CHAPI_MOVIE_TICKET: &str = include_str!("../chapi-movie-ticket-v1.json");
 /// <https://purl.imsglobal.org/spec/ob/v3p0/context.json>
 pub const PLUGFEST_V2: &str = include_str!("../plugfest-2.json");
-/// <https://purl.imsglobal.org/spec/clr/v2p0/context.json>
-pub const CLR_V2: &str = include_str!("../clr-2.0.json");
 
 pub const TZ_V2: &str = include_str!("../tz-2021-v2.jsonld");
 pub const TZVM_V1: &str = include_str!("../tzvm-2021-v1.jsonld");
