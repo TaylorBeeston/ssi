@@ -87,7 +87,7 @@ pub const DID_CONFIGURATION_V0_0: &str = include_str!("../did-configuration-v0.0
 pub const JFF_VC_EDU_PLUGFEST_2022_2: &str = include_str!("../jff-vc-edu-plugfest-2-context.json");
 /// <https://openbadgespec.org/v2/context.json>
 pub const OBV2: &str = include_str!("../openbadges-v2.json");
-/// <https://imsglobal.github.io/openbadges-specification/context.json>
+/// <https://purl.imsglobal.org/spec/ob/v3p0/context.json>
 pub const OBV3: &str = include_str!("../openbadges-v3.json");
 /// <https://playground.chapi.io/examples/alumni/alumni-v1.json>
 pub const CHAPI_ALUMNI: &str = include_str!("../chapi-alumni-v1.json");
