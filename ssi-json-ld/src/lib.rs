@@ -82,6 +82,8 @@ pub const JFF_VC_EDU_PLUGFEST_2022_2_CONTEXT: Iri =
     iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
 pub const OB_V2_CONTEXT: Iri = iri!("https://openbadgespec.org/v2/context.json");
 pub const OB_V3_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
+pub const OLD_OB_V3_CONTEXT: Iri =
+    iri!("https://imsglobal.github.io/openbadges-specification/context.json");
 pub const CHAPI_ALUMNI_CONTEXT: Iri =
     iri!("https://playground.chapi.io/examples/alumni/alumni-v1.json");
 pub const CHAPI_MOVIE_TICKET_CONTEXT: Iri =
@@ -353,7 +355,7 @@ impl Loader<IriBuf, Span> for StaticLoader {
                         Ok(JFF_VC_EDU_PLUGFEST_2022_2_CONTEXT_DOCUMENT.clone())
                     },
                     OB_V2_CONTEXT => Ok(OB_V2_CONTEXT_DOCUMENT.clone()),
-                    OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
+                    OB_V3_CONTEXT | OLD_OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
                     CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
                     CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
                     PLUGFEST_V2_CONTEXT => Ok(PLUGFEST_V2_CONTEXT_DOCUMENT.clone()),
