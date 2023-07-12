@@ -162,9 +162,13 @@ pub const OLD_OB_V3_CONTEXT: &str =
     "https://imsglobal.github.io/openbadges-specification/context.json";
 pub const OB_V3_CONTEXT: &str = "https://purl.imsglobal.org/spec/ob/v3p0/context.json";
 pub const OB_V301_CONTEXT: &str = "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json";
+pub const OB_V3_EXTENSIONS_CONTEXT: &str =
+    "https://purl.imsglobal.org/spec/ob/v3p0/extensions.json";
 pub const CHAPI_ALUMNI_CONTEXT: &str = "https://playground.chapi.io/examples/alumni/alumni-v1.json";
 pub const CHAPI_MOVIE_TICKET_CONTEXT: &str =
     "https://playground.chapi.io/examples/movieTicket/ticket-v1.json";
+pub const CLR_V2_CONTEXT: &str = "https://purl.imsglobal.org/spec/clr/v2p0/context.json";
+pub const W3ID_DATA_INTEGRITY_CONTEXT: &str = "https://w3id.org/security/data-integrity/v1";
 
 lazy_static::lazy_static! {
     pub static ref CREDENTIALS_V1_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
@@ -365,6 +369,12 @@ lazy_static::lazy_static! {
         let iri = Iri::new(OB_V301_CONTEXT).unwrap();
         RemoteDocument::new(doc, iri)
     };
+    pub static ref OB_V3_EXTENSIONS_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
+        let jsonld = ssi_contexts::OBV3_EXTENSIONS;
+        let doc = json::parse(jsonld).unwrap();
+        let iri = Iri::new(OB_V3_EXTENSIONS_CONTEXT).unwrap();
+        RemoteDocument::new(doc, iri)
+    };
     pub static ref CHAPI_ALUMNI_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
         let jsonld = ssi_contexts::CHAPI_ALUMNI;
         let doc = json::parse(jsonld).unwrap();
@@ -375,6 +385,18 @@ lazy_static::lazy_static! {
         let jsonld = ssi_contexts::CHAPI_MOVIE_TICKET;
         let doc = json::parse(jsonld).unwrap();
         let iri = Iri::new(CHAPI_MOVIE_TICKET_CONTEXT).unwrap();
+        RemoteDocument::new(doc, iri)
+    };
+    pub static ref CLR_V2_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
+        let jsonld = ssi_contexts::CLR_V2;
+        let doc = json::parse(jsonld).unwrap();
+        let iri = Iri::new(CLR_V2_CONTEXT).unwrap();
+        RemoteDocument::new(doc, iri)
+    };
+    pub static ref W3ID_DATA_INTEGRITY_CONTEXT_DOCUMENT: RemoteDocument<JsonValue> = {
+        let jsonld = ssi_contexts::W3ID_DATA_INTEGRITY;
+        let doc = json::parse(jsonld).unwrap();
+        let iri = Iri::new(W3ID_DATA_INTEGRITY_CONTEXT).unwrap();
         RemoteDocument::new(doc, iri)
     };
 }
@@ -435,8 +457,11 @@ impl Loader for StaticLoader {
                 OB_V2_CONTEXT => Ok(OB_V2_CONTEXT_DOCUMENT.clone()),
                 OB_V3_CONTEXT | OLD_OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
                 OB_V301_CONTEXT => Ok(OB_V301_CONTEXT_DOCUMENT.clone()),
+                OB_V3_EXTENSIONS_CONTEXT => Ok(OB_V3_EXTENSIONS_CONTEXT_DOCUMENT.clone()),
                 CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
                 CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
+                CLR_V2_CONTEXT => Ok(CLR_V2_CONTEXT_DOCUMENT.clone()),
+                W3ID_DATA_INTEGRITY_CONTEXT => Ok(W3ID_DATA_INTEGRITY_CONTEXT_DOCUMENT.clone()),
 
                 _ => Err(json_ld::ErrorCode::LoadingDocumentFailed.into()),
             }

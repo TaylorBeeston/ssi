@@ -34,4 +34,6 @@ exec curl \
     https://purl.imsglobal.org/spec/ob/v3p0/extensions.json -o openbadges-v3-extensions.json \
     https://playground.chapi.io/examples/alumni/alumni-v1.json -o chapi-alumni-v1.json \
     https://playground.chapi.io/examples/movieTicket/ticket-v1.json -o chapi-movie-ticket-v1.json \
+    https://purl.imsglobal.org/spec/clr/v2p0/context.json -o clr-2.0.json \
+    https://w3id.org/security/data-integrity/v1 -o w3id-data-integrity.json \
 	-L
