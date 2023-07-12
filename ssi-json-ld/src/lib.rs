@@ -90,6 +90,7 @@ pub const CHAPI_ALUMNI_CONTEXT: Iri =
 pub const CHAPI_MOVIE_TICKET_CONTEXT: Iri =
     iri!("https://playground.chapi.io/examples/movieTicket/ticket-v1.json");
 pub const PLUGFEST_V2_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
+pub const CLR_V2_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/clr/v2p0/context.json");
 
 /// Load a remote context from its static definition.
 fn load_static_context(iri: Iri, content: &str) -> RemoteDocument {
@@ -271,6 +272,10 @@ lazy_static::lazy_static! {
         OB_V301_CONTEXT,
         ssi_contexts::OBV301,
     );
+    pub static ref CLR_V2_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        CLR_V2_CONTEXT,
+        ssi_contexts::CLR_V2
+    );
 }
 
 macro_rules! iri_match {
@@ -365,6 +370,7 @@ impl Loader<IriBuf, Span> for StaticLoader {
                     CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
                     CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
                     PLUGFEST_V2_CONTEXT => Ok(PLUGFEST_V2_CONTEXT_DOCUMENT.clone()),
+                    CLR_V2_CONTEXT => Ok(CLR_V2_CONTEXT_DOCUMENT.clone()),
                     _ as iri => Err(UnknownContext(iri))
                 }
             }
