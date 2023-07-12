@@ -87,6 +87,8 @@ pub const DID_CONFIGURATION_V0_0: &str = include_str!("../did-configuration-v0.0
 pub const JFF_VC_EDU_PLUGFEST_2022_2: &str = include_str!("../jff-vc-edu-plugfest-2-context.json");
 /// <https://openbadgespec.org/v2/context.json>
 pub const OBV2: &str = include_str!("../openbadges-v2.json");
+/// <https://imsglobal.github.io/openbadges-specification/context.json>
+pub const OBV3: &str = include_str!("../openbadges-v3.json");
 
 pub const TZ_V2: &str = include_str!("../tz-2021-v2.jsonld");
 pub const TZVM_V1: &str = include_str!("../tzvm-2021-v1.jsonld");
