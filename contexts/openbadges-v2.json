@@ -37,29 +37,17 @@
 
     "author": { "@id": "schema:author", "@type": "@id" },
     "caption": { "@id": "schema:caption" },
-<<<<<<< HEAD
     "claim": {"@id": "cred:claim", "@type": "@id"},
-=======
-    "claim": { "@id": "cred:claim", "@type": "@id" },
->>>>>>> b8b0c8d (:sparkles: Add Obv2 context and deterministic JWK functions)
     "created": { "@id": "dc:created", "@type": "xsd:dateTime" },
     "creator": { "@id": "dc:creator", "@type": "@id" },
     "description": { "@id": "schema:description" },
     "email": { "@id": "schema:email" },
-<<<<<<< HEAD
     "endorsement": {"@id": "cred:credential", "@type": "@id"},
-=======
-    "endorsement": { "@id": "cred:credential", "@type": "@id" },
->>>>>>> b8b0c8d (:sparkles: Add Obv2 context and deterministic JWK functions)
     "expires": { "@id": "sec:expiration", "@type": "xsd:dateTime" },
     "genre": { "@id": "schema:genre" },
     "image": { "@id": "schema:image", "@type": "@id" },
     "name": { "@id": "schema:name" },
-<<<<<<< HEAD
     "owner": {"@id": "sec:owner", "@type": "@id"},
-=======
-    "owner": { "@id": "sec:owner", "@type": "@id" },
->>>>>>> b8b0c8d (:sparkles: Add Obv2 context and deterministic JWK functions)
     "publicKey": { "@id": "sec:publicKey", "@type": "@id" },
     "publicKeyPem": { "@id": "sec:publicKeyPem" },
     "related": { "@id": "dc:relation", "@type": "@id" },
