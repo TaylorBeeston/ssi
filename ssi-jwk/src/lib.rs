@@ -1,7 +1,6 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 use num_bigint::{BigInt, Sign};
-use rand_old::RngCore;
 use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
 use std::convert::TryFrom;
 use std::result::Result;
@@ -344,11 +343,8 @@ impl JWK {
 
     #[cfg(feature = "k256")]
     pub fn generate_secp256k1() -> Result<JWK, Error> {
-        let mut bytes = [0u8; 32];
-
-        rand_old::rngs::OsRng.fill_bytes(&mut bytes);
-
-        let secret_key = k256::SecretKey::from_be_bytes(&bytes).unwrap();
+        let mut rng = rand::rngs::OsRng {};
+        let secret_key = k256::SecretKey::random(&mut rng);
         // SecretKey zeroizes on drop
         let sk_scalar = secret_key.as_scalar_core().to_be_bytes();
         let sk_bytes: &[u8] = sk_scalar.as_ref();
