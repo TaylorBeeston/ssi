@@ -1413,7 +1413,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "secp256k1")]
+    #[cfg(feature = "k256")]
     fn secp256k1_generate() {
         let _jwk = JWK::generate_secp256k1().unwrap();
     }

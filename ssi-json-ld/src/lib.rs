@@ -34,6 +34,7 @@ pub type ToRdfError<
 > = json_ld::ToRdfError<Span, E, C>;
 
 pub const CREDENTIALS_V1_CONTEXT: Iri = iri!("https://www.w3.org/2018/credentials/v1");
+pub const CREDENTIALS_EXAMPLES_V1_CONTEXT: Iri = iri!("https://www.w3.org/2018/credentials/examples/v1");
 pub const CREDENTIALS_V2_CONTEXT: Iri = iri!("https://www.w3.org/ns/credentials/v2");
 pub const CREDENTIALS_EXAMPLES_V1_CONTEXT: Iri =
     iri!("https://www.w3.org/2018/credentials/examples/v1");
@@ -84,6 +85,12 @@ pub const DID_CONFIGURATION_V0_0_CONTEXT: Iri =
     iri!("https://identity.foundation/.well-known/contexts/did-configuration-v0.0.jsonld");
 pub const JFF_VC_EDU_PLUGFEST_2022_2_CONTEXT: Iri =
     iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
+pub const OB_V2_CONTEXT: Iri = iri!("https://openbadgespec.org/v2/context.json");
+pub const OB_V3_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
+pub const CHAPI_ALUMNI_CONTEXT: Iri = 
+    iri!("https://playground.chapi.io/examples/alumni/alumni-v1.json");
+pub const CHAPI_MOVIE_TICKET_CONTEXT: Iri = 
+    iri!("https://playground.chapi.io/examples/movieTicket/ticket-v1.json");
 
 /// Load a remote context from its static definition.
 fn load_static_context(iri: Iri, content: &str) -> RemoteDocument {
@@ -241,6 +248,22 @@ lazy_static::lazy_static! {
         JFF_VC_EDU_PLUGFEST_2022_2_CONTEXT,
         ssi_contexts::JFF_VC_EDU_PLUGFEST_2022_2
     );
+    pub static ref OB_V2_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        OB_V2_CONTEXT,
+        ssi_contexts::OBV2;
+    };
+    pub static ref OB_V3_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        OB_V3_CONTEXT,
+        ssi_contexts::OBV3;
+    };
+    pub static ref CHAPI_ALUMNI_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        CHAPI_ALUMNI_CONTEXT,
+        ssi_contexts::CHAPI_ALUMNI
+    };
+    pub static ref CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        CHAPI_MOVIE_TICKET_CONTEXT,
+        ssi_contexts::CHAPI_MOVIE_TICKET
+    };
 }
 
 macro_rules! iri_match {
@@ -329,6 +352,10 @@ impl Loader<IriBuf, Span> for StaticLoader {
                     JFF_VC_EDU_PLUGFEST_2022_2_CONTEXT => {
                         Ok(JFF_VC_EDU_PLUGFEST_2022_2_CONTEXT_DOCUMENT.clone())
                     },
+                    OB_V2_CONTEXT => Ok(OB_V2_CONTEXT_DOCUMENT.clone()),
+                    OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
+                    CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
+                    CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
                     _ as iri => Err(UnknownContext(iri))
                 }
             }
