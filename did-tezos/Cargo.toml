@@ -11,13 +11,6 @@ repository = "https://github.com/spruceid/ssi/"
 homepage = "https://github.com/spruceid/ssi/tree/main/did-tezos/"
 documentation = "https://docs.rs/did-tezos/"
 
-[features]
-default = ["ssi/ring"]
-dalek = ["ssi/ed25519-dalek", "ssi/sha2"]
-secp256k1 = ["ssi/secp256k1"]
-secp256r1 = ["ssi/secp256r1"]
-p256 = ["secp256r1"]
-
 [dependencies]
 ssi-dids = { path = "../ssi-dids", version = "0.1" }
 # TODO Enabling the tezos feature all the time as it is gating the blakesig stuff in ssi_jwk

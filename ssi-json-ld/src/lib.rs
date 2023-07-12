@@ -9,12 +9,8 @@ pub mod urdna2015;
 use async_std::sync::RwLock;
 use futures::future::{BoxFuture, FutureExt};
 use iref::{Iri, IriBuf};
-use json::{array, JsonValue};
-pub use json_ld::{
-    syntax, util::AsJson, Document, JsonContext, Loader, Options, ProcessingMode, RemoteDocument,
-    RemoteDocumentReference,
-};
-use json_ld::{syntax::TryFromJson, Loader};
+use json_ld::syntax::TryFromJson;
+pub use json_ld::{syntax, Loader, Options, ProcessingMode, RemoteDocumentReference};
 use json_syntax::Parse;
 use locspan::{Meta, Span};
 use rdf_types::IriVocabularyMut;
@@ -34,7 +30,6 @@ pub type ToRdfError<
 > = json_ld::ToRdfError<Span, E, C>;
 
 pub const CREDENTIALS_V1_CONTEXT: Iri = iri!("https://www.w3.org/2018/credentials/v1");
-pub const CREDENTIALS_EXAMPLES_V1_CONTEXT: Iri = iri!("https://www.w3.org/2018/credentials/examples/v1");
 pub const CREDENTIALS_V2_CONTEXT: Iri = iri!("https://www.w3.org/ns/credentials/v2");
 pub const CREDENTIALS_EXAMPLES_V1_CONTEXT: Iri =
     iri!("https://www.w3.org/2018/credentials/examples/v1");
@@ -87,9 +82,9 @@ pub const JFF_VC_EDU_PLUGFEST_2022_2_CONTEXT: Iri =
     iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
 pub const OB_V2_CONTEXT: Iri = iri!("https://openbadgespec.org/v2/context.json");
 pub const OB_V3_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
-pub const CHAPI_ALUMNI_CONTEXT: Iri = 
+pub const CHAPI_ALUMNI_CONTEXT: Iri =
     iri!("https://playground.chapi.io/examples/alumni/alumni-v1.json");
-pub const CHAPI_MOVIE_TICKET_CONTEXT: Iri = 
+pub const CHAPI_MOVIE_TICKET_CONTEXT: Iri =
     iri!("https://playground.chapi.io/examples/movieTicket/ticket-v1.json");
 
 /// Load a remote context from its static definition.
@@ -250,20 +245,20 @@ lazy_static::lazy_static! {
     );
     pub static ref OB_V2_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
         OB_V2_CONTEXT,
-        ssi_contexts::OBV2;
-    };
+        ssi_contexts::OBV2,
+    );
     pub static ref OB_V3_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
         OB_V3_CONTEXT,
-        ssi_contexts::OBV3;
-    };
+        ssi_contexts::OBV3,
+    );
     pub static ref CHAPI_ALUMNI_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
         CHAPI_ALUMNI_CONTEXT,
-        ssi_contexts::CHAPI_ALUMNI
-    };
+        ssi_contexts::CHAPI_ALUMNI,
+    );
     pub static ref CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
         CHAPI_MOVIE_TICKET_CONTEXT,
-        ssi_contexts::CHAPI_MOVIE_TICKET
-    };
+        ssi_contexts::CHAPI_MOVIE_TICKET,
+    );
 }
 
 macro_rules! iri_match {
