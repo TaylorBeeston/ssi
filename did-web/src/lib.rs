@@ -1,18 +1,26 @@
 use async_trait::async_trait;
 
+use cached::{Cached, TimedCache};
+
 use ssi_dids::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata, ERROR_INVALID_DID,
     ERROR_NOT_FOUND, TYPE_DID_LD_JSON,
 };
 use ssi_dids::{DIDMethod, Document};
+
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 // For testing, enable handling requests at localhost.
+use async_std::sync::Mutex;
 #[cfg(test)]
 use std::cell::RefCell;
 #[cfg(test)]
 thread_local! {
   static PROXY: RefCell<Option<String>> = RefCell::new(None);
+}
+
+lazy_static::lazy_static! {
+    static ref CACHE: Mutex<TimedCache<String, (ResolutionMetadata, Vec<u8>, Option<DocumentMetadata>)>> = Mutex::new(TimedCache::with_lifespan(10));
 }
 
 /// did:web Method
@@ -72,8 +80,19 @@ impl DIDResolver for DIDWeb {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        let (mut res_meta, doc_data, doc_meta_opt) =
-            self.resolve_representation(did, input_metadata).await;
+        let (mut res_meta, doc_data, doc_meta_opt) = match &input_metadata.no_cache {
+            Some(true) => self.resolve_representation(did, input_metadata).await,
+            _ => {
+                let mut cache = CACHE.lock().await;
+                if let Some(hit) = (*cache).cache_get(did) {
+                    hit.clone()
+                } else {
+                    drop(cache);
+                    self.resolve_representation(did, input_metadata).await
+                }
+            }
+        };
+
         let doc_opt = if doc_data.is_empty() {
             None
         } else {
@@ -168,7 +187,7 @@ impl DIDResolver for DIDWeb {
             }
         };
         // TODO: set document created/updated metadata from HTTP headers?
-        (
+        let result = (
             ResolutionMetadata {
                 error: None,
                 content_type: Some(TYPE_DID_LD_JSON.to_string()),
@@ -176,7 +195,12 @@ impl DIDResolver for DIDWeb {
             },
             doc_representation,
             Some(DocumentMetadata::default()),
-        )
+        );
+
+        let mut cache = CACHE.lock().await;
+        (*cache).cache_set(did.to_string(), result.clone());
+
+        result
     }
 }
 
