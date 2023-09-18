@@ -73,6 +73,8 @@ pub const OBV2: &str = include_str!("../openbadges-v2.json");
 pub const OBV3: &str = include_str!("../openbadges-v3.json");
 /// <https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json>
 pub const OBV301: &str = include_str!("../openbadges-v3.0.1.json");
+/// <https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.2.json>
+pub const OBV302: &str = include_str!("../openbadges-v3.0.2.json");
 /// <https://purl.imsglobal.org/spec/ob/v3p0/extensions.json>
 pub const OBV3_EXTENSIONS: &str = include_str!("../openbadges-v3-extensions.json");
 /// <https://playground.chapi.io/examples/alumni/alumni-v1.json>
