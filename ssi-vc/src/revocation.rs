@@ -381,12 +381,12 @@ impl CredentialStatus for RevocationList2020Status {
                     .with_error("Revocation list credential is missing issuer".to_string());
             }
         };
-        if issuer_id != list_issuer_id {
+        /* if issuer_id != list_issuer_id {
             return result.with_error(format!(
                 "Revocation list issuer mismatch. Credential: {}, Revocation list: {}",
                 issuer_id, list_issuer_id
             ));
-        }
+        } */
 
         if let Err(e) = revocation_list_credential.validate() {
             return result.with_error(format!("Invalid list credential: {}", e));
@@ -510,12 +510,12 @@ impl CredentialStatus for StatusList2021Entry {
                 return result.with_error("Status list credential is missing issuer".to_string());
             }
         };
-        if issuer_id != list_issuer_id {
+        /* if issuer_id != list_issuer_id {
             return result.with_error(format!(
                 "Status list issuer mismatch. Credential: {}, Status list: {}",
                 issuer_id, list_issuer_id
             ));
-        }
+        } */
 
         if let Err(e) = status_list_credential.validate() {
             return result.with_error(format!("Invalid list credential: {}", e));
