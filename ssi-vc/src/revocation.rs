@@ -493,6 +493,7 @@ impl CredentialStatus for StatusList2021Entry {
         // examples and test vectors use https.
         match self.status_list_credential.split_once(':') {
             Some(("https", _)) => (),
+            Some(("http", _)) => (),
             // TODO: an option to allow HTTP?
             // TODO: load from DID URLs?
             Some((_scheme, _)) => return result.with_error(format!("Invalid schema: {}", self.id)),
