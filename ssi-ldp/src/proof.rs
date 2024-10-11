@@ -114,7 +114,9 @@ impl Proof {
             );
         }
         if let Some(created) = self.created {
-            assert_local!(options.created.unwrap_or_else(now_ms) >= created);
+            if let Some(options_created) = options.created {
+                assert_local!(options_created >= created);
+            }
         } else {
             return false;
         }
