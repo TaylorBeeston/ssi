@@ -28,6 +28,13 @@ lazy_static::lazy_static! {
 /// [Specification](https://w3c-ccg.github.io/did-method-web/)
 pub struct DIDWeb;
 
+impl DIDWeb {
+    pub async fn clear_cache() {
+        let mut cache = CACHE.lock().await;
+        cache.cache_clear();
+    }
+}
+
 fn did_web_url(did: &str) -> Result<String, ResolutionMetadata> {
     let mut parts = did.split(':').peekable();
     let domain_name = match (parts.next(), parts.next(), parts.next()) {
