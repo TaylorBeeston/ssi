@@ -28,6 +28,8 @@ k256 = { version = "0.11", optional = true, features = ["ecdsa"] }
 p256 = { version = "0.11", optional = true, features = ["ecdsa"] }
 serde_json = "1.0"
 simple_asn1 = "^0.5.2"
+bs58 = "0.5"
+curve25519-dalek = "4.0"
 
 [dev-dependencies]
 ssi-vc = { path = "../ssi-vc" }

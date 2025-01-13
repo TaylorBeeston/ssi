@@ -230,6 +230,34 @@ impl DIDResolver for DIDKey {
             fragment: Some(method_specific_id.to_string()),
             ..Default::default()
         };
+        let mut key_agreement = None;
+        if data[0] == DID_KEY_ED25519_PREFIX[0] && data[1] == DID_KEY_ED25519_PREFIX[1] {
+            // Convert Ed25519 public key to X25519
+            let ed_public = &data[2..];
+            if let Some(mont_public) = curve25519_dalek::edwards::CompressedEdwardsY(
+                <[u8; 32]>::try_from(ed_public).unwrap(),
+            )
+            .decompress()
+            .map(|ed_point| ed_point.to_montgomery())
+            {
+                // Create the key agreement ID using z-base multicodec
+                let mut x25519_bytes = vec![
+                    0xec, 0x01, // X25519 multicodec prefix
+                ];
+                x25519_bytes.extend_from_slice(&mont_public.to_bytes());
+
+                // Encode using multibase (base58btc)
+                let ka_id = format!("z{}", bs58::encode(&x25519_bytes).into_string());
+
+                key_agreement = Some(vec![VerificationMethod::Map(VerificationMethodMap {
+                    id: format!("{}#{}", did, ka_id),
+                    type_: "X25519KeyAgreementKey2019".to_string(),
+                    controller: did.to_string(),
+                    public_key_base58: Some(bs58::encode(&mont_public.to_bytes()).into_string()),
+                    ..Default::default()
+                })]);
+            }
+        }
         let doc = Document {
             context: Contexts::Many(vec![
                 Context::URI(DEFAULT_CONTEXT.into()),
@@ -245,6 +273,7 @@ impl DIDResolver for DIDKey {
             })]),
             authentication: Some(vec![VerificationMethod::DIDURL(vm_didurl.clone())]),
             assertion_method: Some(vec![VerificationMethod::DIDURL(vm_didurl)]),
+            key_agreement,
             ..Default::default()
         };
         (
