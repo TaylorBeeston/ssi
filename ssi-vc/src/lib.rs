@@ -81,6 +81,15 @@ pub struct Credential {
     pub credential_schema: Option<OneOrMany<Schema>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_service: Option<OneOrMany<RefreshService>>,
+
+    // VC 2.0
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub valid_from: Option<VCDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub valid_until: Option<VCDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<OneOrMany<Status>>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(flatten)]
     pub property_set: Option<Map<String, Value>>,
@@ -915,9 +924,6 @@ impl Credential {
             if subject.is_empty() {
                 return Err(Error::EmptyCredentialSubject);
             }
-        }
-        if self.issuance_date.is_none() {
-            return Err(Error::MissingIssuanceDate);
         }
 
         if self.is_zkp() && self.credential_schema.is_none() {
