@@ -97,3 +97,4 @@ pub const EIP712VM: &str = include_str!("../eip712vm.jsonld");
 pub const EPSIG_V0_1: &str = include_str!("../epsig-v0.1.jsonld");
 pub const SOLVM: &str = include_str!("../solvm.jsonld");
 pub const ALEOVM: &str = include_str!("../aleovm.jsonld");
+pub const LEARNCARD_BOOSTS_V1_0_0: &str = include_str!("../learncard-boosts-1.0.0.json");

@@ -88,6 +88,7 @@ pub const OB_V301_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/c
 pub const OB_V302_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.2.json");
 pub const OB_V3_EXTENSIONS_CONTEXT: Iri =
     iri!("https://purl.imsglobal.org/spec/ob/v3p0/extensions.json");
+pub const LEARNCARD_BOOSTS_CONTEXT: Iri = iri!("https://ctx.learncard.com/boosts/1.0.0.json");
 pub const CHAPI_ALUMNI_CONTEXT: Iri =
     iri!("https://playground.chapi.io/examples/alumni/alumni-v1.json");
 pub const CHAPI_MOVIE_TICKET_CONTEXT: Iri =
@@ -259,6 +260,10 @@ lazy_static::lazy_static! {
         OB_V3_CONTEXT,
         ssi_contexts::OBV3,
     );
+    pub static ref LEARNCARD_BOOSTS_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        LEARNCARD_BOOSTS_CONTEXT,
+        ssi_contexts::LEARNCARD_BOOSTS_V1_0_0,
+    );
     pub static ref CHAPI_ALUMNI_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
         CHAPI_ALUMNI_CONTEXT,
         ssi_contexts::CHAPI_ALUMNI,
@@ -380,6 +385,7 @@ impl Loader<IriBuf, Span> for StaticLoader {
                     OB_V301_CONTEXT => Ok(OB_V301_CONTEXT_DOCUMENT.clone()),
                     OB_V302_CONTEXT => Ok(OB_V302_CONTEXT_DOCUMENT.clone()),
                     OB_V3_EXTENSIONS_CONTEXT => Ok(OB_V3_EXTENSIONS_CONTEXT_DOCUMENT.clone()),
+                    LEARNCARD_BOOSTS_CONTEXT => Ok(LEARNCARD_BOOSTS_CONTEXT_DOCUMENT.clone()),
                     CHAPI_ALUMNI_CONTEXT => Ok(CHAPI_ALUMNI_CONTEXT_DOCUMENT.clone()),
                     CHAPI_MOVIE_TICKET_CONTEXT => Ok(CHAPI_MOVIE_TICKET_CONTEXT_DOCUMENT.clone()),
                     PLUGFEST_V2_CONTEXT => Ok(PLUGFEST_V2_CONTEXT_DOCUMENT.clone()),

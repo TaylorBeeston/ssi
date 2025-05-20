@@ -39,4 +39,5 @@ exec curl \
     https://purl.imsglobal.org/spec/clr/v2p0/context.json -o clr-2.0.json \
     https://w3id.org/security/data-integrity/v1 -o w3id-data-integrity.json \
     https://purl.imsglobal.org/spec/ob/v3p0/context.json -o plugfest-2.json \
+    https://ctx.learncard.com/boosts/1.0.0.json -o learncard-boosts-1.0.0.json \
     -L
