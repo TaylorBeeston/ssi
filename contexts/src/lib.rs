@@ -97,4 +97,12 @@ pub const EIP712VM: &str = include_str!("../eip712vm.jsonld");
 pub const EPSIG_V0_1: &str = include_str!("../epsig-v0.1.jsonld");
 pub const SOLVM: &str = include_str!("../solvm.jsonld");
 pub const ALEOVM: &str = include_str!("../aleovm.jsonld");
+/// <https://ctx.learncard.com/boosts/1.0.0.json>
 pub const LEARNCARD_BOOSTS_V1_0_0: &str = include_str!("../learncard-boosts-1.0.0.json");
+
+/// <https://ctx.learncard.com/boostIDs/1.0.0.json>
+pub const LEARNCARD_BOOSTIDS_V1_0_0: &str = include_str!("../learncard-boostIDs-1.0.0.json");
+/// <https://ctx.learncard.com/delegates/1.0.0.json>
+pub const LEARNCARD_DELEGATES_V1_0_0: &str = include_str!("../learncard-delegates-1.0.0.json");
+/// <https://ctx.learncard.com/qa/1.0.0.json>
+pub const LEARNCARD_QA_V1_0_0: &str = include_str!("../learncard-qa-1.0.0.json");
