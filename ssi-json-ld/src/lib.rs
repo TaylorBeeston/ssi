@@ -86,6 +86,7 @@ pub const OLD_OB_V3_CONTEXT: Iri =
 pub const OB_V3_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context.json");
 pub const OB_V301_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.1.json");
 pub const OB_V302_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.2.json");
+pub const OB_V303_CONTEXT: Iri = iri!("https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json");
 pub const OB_V3_EXTENSIONS_CONTEXT: Iri =
     iri!("https://purl.imsglobal.org/spec/ob/v3p0/extensions.json");
 pub const LEARNCARD_BOOSTS_CONTEXT: Iri = iri!("https://ctx.learncard.com/boosts/1.0.0.json");
@@ -299,6 +300,10 @@ lazy_static::lazy_static! {
         OB_V302_CONTEXT,
         ssi_contexts::OBV302,
     );
+    pub static ref OB_V303_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        OB_V303_CONTEXT,
+        ssi_contexts::OBV303,
+    );
     pub static ref OB_V3_EXTENSIONS_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
         OB_V3_EXTENSIONS_CONTEXT,
         ssi_contexts::OBV3_EXTENSIONS,
@@ -399,6 +404,7 @@ impl Loader<IriBuf, Span> for StaticLoader {
                     OB_V3_CONTEXT | OLD_OB_V3_CONTEXT => Ok(OB_V3_CONTEXT_DOCUMENT.clone()),
                     OB_V301_CONTEXT => Ok(OB_V301_CONTEXT_DOCUMENT.clone()),
                     OB_V302_CONTEXT => Ok(OB_V302_CONTEXT_DOCUMENT.clone()),
+                    OB_V303_CONTEXT => Ok(OB_V303_CONTEXT_DOCUMENT.clone()),
                     OB_V3_EXTENSIONS_CONTEXT => Ok(OB_V3_EXTENSIONS_CONTEXT_DOCUMENT.clone()),
                     LEARNCARD_BOOSTS_CONTEXT => Ok(LEARNCARD_BOOSTS_CONTEXT_DOCUMENT.clone()),
                     LEARNCARD_BOOSTIDS_CONTEXT => Ok(LEARNCARD_BOOSTIDS_CONTEXT_DOCUMENT.clone()),
