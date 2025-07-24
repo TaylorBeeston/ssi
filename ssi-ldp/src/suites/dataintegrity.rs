@@ -46,8 +46,8 @@ impl TryFrom<&str> for DataIntegrityCryptoSuite {
         match value {
             "eddsa-2022" => Ok(Self::Eddsa2022),
             "json-eddsa-2022" => Ok(Self::JcsEddsa2022),
-            "ecdsa-2022" => Ok(Self::Ecdsa2019),
-            "jcs-ecdsa-2022" => Ok(Self::JcsEcdsa2019),
+            "ecdsa-2019" => Ok(Self::Ecdsa2019),
+            "jcs-ecdsa-2019" => Ok(Self::JcsEcdsa2019),
             _ => Err(Error::UnsupportedCryptosuite),
         }
     }

@@ -741,6 +741,11 @@ impl ProofGraph for grdf::HashGraph<rdf_types::Subject, IriBuf, rdf_types::Objec
         self.take_object_and_assert_eq(s, p, expected_o, |o, expected| match o {
             rdf_types::Object::Iri(iri) => iri.as_str() == *expected,
             rdf_types::Object::Literal(rdf_types::Literal::String(s)) => s.as_str() == *expected,
+            // Handle typed literals with cryptosuite datatype (fixes DataIntegrity proof serialization)
+            rdf_types::Object::Literal(rdf_types::Literal::TypedString(s, ty)) 
+                if *ty == iri!("https://w3id.org/security#cryptosuiteString") => {
+                s.as_str() == *expected
+            }
             _ => false,
         })
     }
