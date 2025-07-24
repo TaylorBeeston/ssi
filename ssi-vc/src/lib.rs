@@ -1072,7 +1072,14 @@ impl Credential {
         LinkedDataProofs::prepare(self, options, resolver, context_loader, public_key, None).await
     }
 
-    pub fn add_proof(&mut self, proof: Proof) {
+    pub fn add_proof(&mut self, mut proof: Proof) {
+        // Merge proof context into credential's top-level context for interoperability
+        if !proof.context.is_null() {
+            self.merge_proof_context(&proof.context);
+            // Clear the proof's context since it's now at the top level
+            proof.context = Value::Null;
+        }
+        
         self.proof = match self.proof.take() {
             None => Some(OneOrMany::One(proof)),
             Some(OneOrMany::One(existing_proof)) => {
@@ -1081,6 +1088,56 @@ impl Credential {
             Some(OneOrMany::Many(mut proofs)) => {
                 proofs.push(proof);
                 Some(OneOrMany::Many(proofs))
+            }
+        }
+    }
+    
+    /// Merge proof context into credential's top-level context
+    fn merge_proof_context(&mut self, proof_context: &Value) {
+        use ssi_ldp::Context;
+        use std::collections::HashMap;
+        
+        // Convert proof context Value to Context objects
+        let proof_contexts: Vec<Context> = match proof_context {
+            Value::String(s) => vec![Context::URI(URI::String(s.clone()))],
+            Value::Array(arr) => {
+                arr.iter()
+                    .filter_map(|v| match v {
+                        Value::String(s) => Some(Context::URI(URI::String(s.clone()))),
+                        Value::Object(obj) => {
+                            // Convert serde_json::Map to HashMap
+                            let hashmap: HashMap<String, Value> = obj.iter()
+                                .map(|(k, v)| (k.clone(), v.clone()))
+                                .collect();
+                            Some(Context::Object(hashmap))
+                        },
+                        _ => None,
+                    })
+                    .collect()
+            }
+            Value::Object(obj) => {
+                // Convert serde_json::Map to HashMap
+                let hashmap: HashMap<String, Value> = obj.iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect();
+                vec![Context::Object(hashmap)]
+            },
+            _ => return, // Skip invalid context values
+        };
+        
+        if proof_contexts.is_empty() {
+            return;
+        }
+        
+        // Merge into credential's context
+        match &mut self.context {
+            Contexts::One(existing_context) => {
+                let mut all_contexts = vec![existing_context.clone()];
+                all_contexts.extend(proof_contexts);
+                self.context = Contexts::Many(all_contexts);
+            }
+            Contexts::Many(existing_contexts) => {
+                existing_contexts.extend(proof_contexts);
             }
         }
     }
