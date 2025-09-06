@@ -19,6 +19,7 @@ use ssi_jwk::secp256k1_parse;
 use ssi_jwk::{Base64urlUInt, OctetParams, Params, JWK};
 
 const DID_KEY_ED25519_PREFIX: [u8; 2] = [0xed, 0x01];
+const DID_KEY_X25519_PREFIX: [u8; 2] = [0xec, 0x01];
 const DID_KEY_SECP256K1_PREFIX: [u8; 2] = [0xe7, 0x01];
 const DID_KEY_BLS12381_G2_PREFIX: [u8; 2] = [0xeb, 0x01];
 const DID_KEY_P256_PREFIX: [u8; 2] = [0x80, 0x24];
@@ -97,6 +98,10 @@ impl DIDResolver for DIDKey {
                 "@type": "@json"
             }),
         );
+        context.insert(
+            "publicKeyMultibase".to_string(),
+            serde_json::json!("https://w3id.org/security#publicKeyMultibase"),
+        );
 
         let jwk = if data[0] == DID_KEY_ED25519_PREFIX[0] && data[1] == DID_KEY_ED25519_PREFIX[1] {
             if data.len() - 2 != 32 {
@@ -110,8 +115,8 @@ impl DIDResolver for DIDKey {
                     None,
                 );
             }
-            vm_type = "Ed25519VerificationKey2018".to_string();
-            vm_type_iri = "https://w3id.org/security#Ed25519VerificationKey2018".to_string();
+            vm_type = "Ed25519VerificationKey2020".to_string();
+            vm_type_iri = "https://w3id.org/security#Ed25519VerificationKey2020".to_string();
             JWK {
                 params: Params::OKP(OctetParams {
                     curve: "Ed25519".to_string(),
@@ -249,28 +254,66 @@ impl DIDResolver for DIDKey {
                 // Encode using multibase (base58btc)
                 let ka_id = format!("z{}", bs58::encode(&x25519_bytes).into_string());
 
+                // Build X25519 key agreement method using the 2020 suite and publicKeyMultibase
+                let x25519_mb = multibase::encode(
+                    multibase::Base::Base58Btc,
+                    [
+                        DID_KEY_X25519_PREFIX.to_vec(),
+                        mont_public.to_bytes().to_vec(),
+                    ]
+                    .concat(),
+                );
+
+                let mut ka_props = BTreeMap::new();
+                ka_props.insert(
+                    "publicKeyMultibase".to_string(),
+                    Value::String(x25519_mb),
+                );
+
                 key_agreement = Some(vec![VerificationMethod::Map(VerificationMethodMap {
                     id: format!("{}#{}", did, ka_id),
-                    type_: "X25519KeyAgreementKey2019".to_string(),
+                    type_: "X25519KeyAgreementKey2020".to_string(),
                     controller: did.to_string(),
-                    public_key_base58: Some(bs58::encode(&mont_public.to_bytes()).into_string()),
+                    property_set: Some(ka_props),
                     ..Default::default()
                 })]);
             }
         }
+        // Build the primary verification method map. For Ed25519 (did:key with 0xED01 prefix),
+        // prefer publicKeyMultibase per 2020 suite; for others, keep publicKeyJwk.
+        let primary_vm_map = if data[0] == DID_KEY_ED25519_PREFIX[0]
+            && data[1] == DID_KEY_ED25519_PREFIX[1]
+        {
+            let mut props = BTreeMap::new();
+            props.insert(
+                "publicKeyMultibase".to_string(),
+                Value::String(method_specific_id.to_string()),
+            );
+            VerificationMethodMap {
+                id: format!("{}#{}", did, method_specific_id),
+                type_: vm_type,
+                controller: did.to_string(),
+                public_key_jwk: None,
+                property_set: Some(props),
+                ..Default::default()
+            }
+        } else {
+            VerificationMethodMap {
+                id: format!("{}#{}", did, method_specific_id),
+                type_: vm_type,
+                controller: did.to_string(),
+                public_key_jwk: Some(jwk),
+                ..Default::default()
+            }
+        };
+
         let doc = Document {
             context: Contexts::Many(vec![
                 Context::URI(DEFAULT_CONTEXT.into()),
                 Context::Object(context),
             ]),
             id: did.to_string(),
-            verification_method: Some(vec![VerificationMethod::Map(VerificationMethodMap {
-                id: format!("{}#{}", did, method_specific_id),
-                type_: vm_type,
-                controller: did.to_string(),
-                public_key_jwk: Some(jwk),
-                ..Default::default()
-            })]),
+            verification_method: Some(vec![VerificationMethod::Map(primary_vm_map)]),
             authentication: Some(vec![VerificationMethod::DIDURL(vm_didurl.clone())]),
             assertion_method: Some(vec![VerificationMethod::DIDURL(vm_didurl)]),
             key_agreement,
@@ -409,15 +452,22 @@ mod tests {
 
     #[async_std::test]
     async fn from_did_key() {
-        let vm = "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH#z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH";
+        let vm_did_url = "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH#z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH";
         let (res_meta, object, _meta) =
-            dereference(&DIDKey, vm, &DereferencingInputMetadata::default()).await;
+            dereference(&DIDKey, vm_did_url, &DereferencingInputMetadata::default()).await;
         assert_eq!(res_meta.error, None);
         let vm = match object {
             Content::Object(Resource::VerificationMethod(vm)) => vm,
             _ => unreachable!(),
         };
-        vm.public_key_jwk.unwrap();
+        // Expect Ed25519VerificationKey2020 to expose publicKeyMultibase instead of publicKeyJwk
+        let props = vm.property_set.as_ref().expect("expected property_set with publicKeyMultibase");
+        let pkmb = props
+            .get("publicKeyMultibase")
+            .and_then(|v| v.as_str())
+            .expect("expected publicKeyMultibase string");
+        let expected_fragment = vm_did_url.split('#').nth(1).unwrap();
+        assert_eq!(pkmb, expected_fragment);
     }
 
     #[async_std::test]
