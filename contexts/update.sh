@@ -40,4 +40,6 @@ exec curl \
     https://w3id.org/security/data-integrity/v1 -o w3id-data-integrity.json \
     https://purl.imsglobal.org/spec/ob/v3p0/context.json -o plugfest-2.json \
     https://ctx.learncard.com/boosts/1.0.0.json -o learncard-boosts-1.0.0.json \
+    https://ctx.learncard.com/boosts/1.0.1.json -o learncard-boosts-1.0.1.json \
+    https://ctx.learncard.com/boosts/1.0.2.json -o learncard-boosts-1.0.2.json \
     -L
