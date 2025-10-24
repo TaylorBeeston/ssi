@@ -558,15 +558,12 @@ impl Loader<IriBuf, Span> for ContextLoader {
 
             // If we fell through, then try `self.context_map`.
             if let Some(context_map) = &mut self.context_map {
-                context_map
-                    .read()
-                    .await
-                    .get(&url)
-                    .cloned()
-                    .ok_or(UnknownContext(url))
-            } else {
-                Err(UnknownContext(url))
+                if let Some(doc) = context_map.read().await.get(&url).cloned() {
+                    return Ok(doc);
+                }
             }
+
+            Err(UnknownContext(url))
         }
         .boxed()
     }
@@ -708,5 +705,66 @@ mod test {
         cl.load_with(&mut (), IriBuf::new("https://w3id.org/age/v1").unwrap())
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn loads_credentials_v2_context_from_static_loader() {
+        // Test that credentials v2 context loads successfully from StaticLoader
+        let mut cl = ContextLoader::default();
+        
+        let result = cl.load_with(
+            &mut (),
+            IriBuf::new("https://www.w3.org/ns/credentials/v2").unwrap()
+        ).await;
+        
+        assert!(result.is_ok(), "Should successfully load credentials v2 context from StaticLoader. Error: {:?}", result.err());
+        
+        // Just verify we got something back - the context is loaded
+        let _doc = result.unwrap();
+    }
+
+    #[tokio::test]
+    async fn loads_credentials_v1_context_from_static_loader() {
+        // Test that credentials v1 context also works (baseline comparison)
+        let mut cl = ContextLoader::default();
+        
+        let result = cl.load_with(
+            &mut (),
+            IriBuf::new("https://www.w3.org/2018/credentials/v1").unwrap()
+        ).await;
+        
+        assert!(result.is_ok(), "Should successfully load credentials v1 context from StaticLoader. Error: {:?}", result.err());
+        
+        let _doc = result.unwrap();
+    }
+
+    #[tokio::test]
+    async fn loads_security_v2_context_from_static_loader() {
+        // Test that security v2 context (often used with DataIntegrity proofs) loads
+        let mut cl = ContextLoader::default();
+        
+        let result = cl.load_with(
+            &mut (),
+            IriBuf::new("https://w3id.org/security/v2").unwrap()
+        ).await;
+        
+        assert!(result.is_ok(), "Should successfully load security v2 context. Error: {:?}", result.err());
+        
+        let _doc = result.unwrap();
+    }
+
+    #[tokio::test]
+    async fn loads_ed25519_2020_context_from_static_loader() {
+        // Test that Ed25519Signature2020 proof suite context loads
+        let mut cl = ContextLoader::default();
+        
+        let result = cl.load_with(
+            &mut (),
+            IriBuf::new("https://w3id.org/security/suites/ed25519-2020/v1").unwrap()
+        ).await;
+        
+        assert!(result.is_ok(), "Should successfully load ed25519-2020 proof suite context. Error: {:?}", result.err());
+        
+        let _doc = result.unwrap();
     }
 }

@@ -1498,7 +1498,7 @@ impl Presentation {
             }
         };
         let vp = match Self::from_jwt_claims(claims.clone()) {
-            Ok(claims) => claims,
+            Ok(vp_result) => vp_result,
             Err(err) => {
                 return (
                     None,
@@ -1751,13 +1751,15 @@ impl Presentation {
             })
             .collect();
         let matched_jwt = match jwt_params {
-            Some((header, claims)) => jwt_matches(
-                header,
-                claims,
-                &options,
-                &restrict_allowed_vms,
-                &ProofPurpose::Authentication,
-            ),
+            Some((header, claims)) => {
+                jwt_matches(
+                    header,
+                    claims,
+                    &options,
+                    &restrict_allowed_vms,
+                    &ProofPurpose::Authentication,
+                )
+            },
             None => false,
         };
         Ok((matched_proofs, matched_jwt))

@@ -301,7 +301,7 @@ impl JWK {
     #[cfg(feature = "ring")]
     pub fn generate_ed25519_from_bytes(bytes: &[u8]) -> Result<JWK, Error> {
         if bytes.len() != 32 {
-            return Err(Error::InvalidSeedLength(32, bytes.len()));
+            return Err(Error::InvalidKeyLength(bytes.len()));
         }
 
         let rng = ring::test::rand::FixedSliceRandom { bytes };
@@ -319,7 +319,7 @@ impl JWK {
         })))
     }
 
-    #[cfg(feature = "ed25519-dalek")]
+    #[cfg(all(feature = "ed25519-dalek", not(feature = "ring")))]
     pub fn generate_ed25519() -> Result<JWK, Error> {
         let mut csprng = rand_old::rngs::OsRng {};
         let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
@@ -330,7 +330,7 @@ impl JWK {
         })))
     }
 
-    #[cfg(feature = "ed25519-dalek")]
+    #[cfg(all(feature = "ed25519-dalek", not(feature = "ring")))]
     pub fn generate_ed25519_from_bytes(bytes: &[u8]) -> Result<JWK, Error> {
         let secret = ed25519_dalek::SecretKey::from_bytes(bytes)?;
         let public: ed25519_dalek::PublicKey = (&secret).into();
