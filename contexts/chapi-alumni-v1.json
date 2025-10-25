@@ -1,13 +1,1 @@
-{
-  "@context": {
-    "@version": 1.1,
-    "@protected": true,
-    "name": "http://schema.org/name",
-    "description": "http://schema.org/description",
-    "identifier": "http://schema.org/identifier",
-    "image": {
-      "@id": "http://schema.org/image",
-      "@type": "@id"
-    }
-  }
-}
+<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width,initial-scale=1"/><base href="/"/><title></title><link rel="shortcut icon" href="/favicon.ico" media="none" onload="if(media!='all')media='all'"><script defer="defer" src="/static/js/main.e548c1afc5a35f8946d5.js"></script></head><body class="br-body"><br-app></br-app></body></html>
