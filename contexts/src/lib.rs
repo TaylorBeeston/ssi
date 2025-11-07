@@ -105,6 +105,8 @@ pub const LEARNCARD_BOOSTS_V1_0_0: &str = include_str!("../learncard-boosts-1.0.
 pub const LEARNCARD_BOOSTS_V1_0_1: &str = include_str!("../learncard-boosts-1.0.1.json");
 /// <https://ctx.learncard.com/boosts/1.0.2.json>
 pub const LEARNCARD_BOOSTS_V1_0_2: &str = include_str!("../learncard-boosts-1.0.2.json");
+/// <https://ctx.learncard.com/boosts/1.0.3.json>
+pub const LEARNCARD_BOOSTS_V1_0_3: &str = include_str!("../learncard-boosts-1.0.3.json");
 /// <https://ctx.learncard.com/boostIDs/1.0.0.json>
 pub const LEARNCARD_BOOSTIDS_V1_0_0: &str = include_str!("../learncard-boostIDs-1.0.0.json");
 /// <https://ctx.learncard.com/delegates/1.0.0.json>
