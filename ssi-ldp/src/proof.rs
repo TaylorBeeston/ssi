@@ -132,6 +132,9 @@ impl Proof {
         if let Some(ref type_) = options.type_ {
             assert_local!(&self.type_ == type_);
         }
+        if let Some(ref cryptosuite) = options.cryptosuite {
+            assert_local!(self.cryptosuite.as_ref() == Some(cryptosuite));
+        }
         true
     }
 

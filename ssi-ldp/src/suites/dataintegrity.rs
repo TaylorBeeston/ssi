@@ -17,6 +17,8 @@ pub struct DataIntegrityProof;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub enum DataIntegrityCryptoSuite {
+    #[serde(rename = "eddsa-rdfc-2022")]
+    EddsaRdfc2022,
     #[serde(rename = "eddsa-2022")]
     Eddsa2022,
     #[serde(rename = "json-eddsa-2022")]
@@ -30,7 +32,11 @@ pub enum DataIntegrityCryptoSuite {
 impl DataIntegrityCryptoSuite {
     fn pick_from_jwk(jwk: &JWK) -> Result<Vec<Self>, Error> {
         match jwk.get_algorithm() {
-            Some(Algorithm::EdDSA) => Ok(vec![Self::Eddsa2022, Self::JcsEddsa2022]),
+            Some(Algorithm::EdDSA) => Ok(vec![
+                Self::EddsaRdfc2022,
+                Self::Eddsa2022,
+                Self::JcsEddsa2022,
+            ]),
             Some(Algorithm::ES256) | Some(Algorithm::ES384) => {
                 Ok(vec![Self::Ecdsa2019, Self::JcsEcdsa2019])
             }
@@ -44,6 +50,7 @@ impl TryFrom<&str> for DataIntegrityCryptoSuite {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
+            "eddsa-rdfc-2022" => Ok(Self::EddsaRdfc2022),
             "eddsa-2022" => Ok(Self::Eddsa2022),
             "json-eddsa-2022" => Ok(Self::JcsEddsa2022),
             "ecdsa-2019" => Ok(Self::Ecdsa2019),
@@ -64,6 +71,7 @@ impl TryFrom<String> for DataIntegrityCryptoSuite {
 impl From<DataIntegrityCryptoSuite> for String {
     fn from(value: DataIntegrityCryptoSuite) -> Self {
         match value {
+            DataIntegrityCryptoSuite::EddsaRdfc2022 => "eddsa-rdfc-2022".into(),
             DataIntegrityCryptoSuite::Eddsa2022 => "eddsa-2022".into(),
             DataIntegrityCryptoSuite::JcsEddsa2022 => "json-eddsa-2022".into(),
             DataIntegrityCryptoSuite::Ecdsa2019 => "ecdsa-2019".into(),
@@ -98,7 +106,8 @@ impl DataIntegrityProof {
         context_loader: &mut ContextLoader,
     ) -> Result<Vec<u8>, Error> {
         Ok(match (cryptosuite, jwa) {
-            (DataIntegrityCryptoSuite::Eddsa2022, Algorithm::EdDSA)
+            (DataIntegrityCryptoSuite::EddsaRdfc2022, Algorithm::EdDSA)
+            | (DataIntegrityCryptoSuite::Eddsa2022, Algorithm::EdDSA)
             | (DataIntegrityCryptoSuite::Ecdsa2019, Algorithm::ES256) => {
                 to_jws_payload(document, proof, context_loader).await?
             }
@@ -245,8 +254,14 @@ mod test {
     use super::*;
 
     #[test]
-    fn serde() {
-        let res = serde_json::to_string(&DataIntegrityCryptoSuite::Eddsa2022).unwrap();
-        assert_eq!(res, "\"eddsa-2022\"".to_string());
+    fn serde_defaults_to_eddsa_rdfc_2022() {
+        let res = serde_json::to_string(&DataIntegrityCryptoSuite::EddsaRdfc2022).unwrap();
+        assert_eq!(res, "\"eddsa-rdfc-2022\"".to_string());
+    }
+
+    #[test]
+    fn serde_supports_legacy_eddsa_2022() {
+        let cryptosuite = DataIntegrityCryptoSuite::try_from("eddsa-2022").unwrap();
+        assert_eq!(cryptosuite, DataIntegrityCryptoSuite::Eddsa2022);
     }
 }
