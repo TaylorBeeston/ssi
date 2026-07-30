@@ -44,8 +44,343 @@ use serde_json::Value;
 // - Support normalization of arbitrary JSON-LD
 // - Support more LD-proof types
 
+const PROOF_VERIFICATION_ERROR: &str = "PROOF_VERIFICATION_ERROR";
+
+struct ProofDependencyGraph {
+    dependencies: Vec<Vec<usize>>,
+}
+
+impl ProofDependencyGraph {
+    fn new(proofs: &[&Proof]) -> Result<Option<Self>, String> {
+        if !proofs.iter().any(|proof| proof.previous_proof.is_some()) {
+            return Ok(None);
+        }
+
+        let mut proof_ids = Map::new();
+
+        for (index, proof) in proofs.iter().enumerate() {
+            let Some(id) = proof.id.as_ref() else {
+                continue;
+            };
+
+            if id.is_empty() {
+                return Err(format!(
+                    "{PROOF_VERIFICATION_ERROR}: proof id must not be empty"
+                ));
+            }
+
+            if proof_ids.insert(id.as_str(), index).is_some() {
+                return Err(format!(
+                    "{PROOF_VERIFICATION_ERROR}: duplicate proof id `{id}`"
+                ));
+            }
+        }
+
+        let mut dependencies = vec![Vec::new(); proofs.len()];
+
+        for (index, proof) in proofs.iter().enumerate() {
+            let Some(previous_proofs) = proof.previous_proof.as_ref() else {
+                continue;
+            };
+
+            if previous_proofs.is_empty() {
+                return Err(format!(
+                    "{PROOF_VERIFICATION_ERROR}: previousProof must not be empty"
+                ));
+            }
+
+            for previous_id in previous_proofs {
+                let Some(previous_index) = proof_ids.get(previous_id.as_str()) else {
+                    return Err(format!(
+                        "{PROOF_VERIFICATION_ERROR}: previousProof `{previous_id}` does not identify another proof"
+                    ));
+                };
+
+                dependencies[index].push(*previous_index);
+            }
+        }
+
+        let graph = Self { dependencies };
+        let mut states = vec![0; proofs.len()];
+
+        for index in 0..proofs.len() {
+            graph.visit(index, &mut states, &mut Vec::new())?;
+        }
+
+        Ok(Some(graph))
+    }
+
+    fn ordered_dependencies(&self, index: usize) -> Result<Vec<usize>, String> {
+        let mut states = vec![0; self.dependencies.len()];
+        let mut order = Vec::new();
+
+        self.visit(index, &mut states, &mut order)?;
+
+        Ok(order)
+    }
+
+    fn visit(&self, index: usize, states: &mut [u8], order: &mut Vec<usize>) -> Result<(), String> {
+        match states[index] {
+            1 => {
+                return Err(format!(
+                    "{PROOF_VERIFICATION_ERROR}: cyclic previousProof dependency"
+                ))
+            }
+            2 => return Ok(()),
+            _ => {}
+        }
+
+        states[index] = 1;
+
+        for dependency in &self.dependencies[index] {
+            self.visit(*dependency, states, order)?;
+        }
+
+        states[index] = 2;
+        order.push(index);
+
+        Ok(())
+    }
+}
+/// Signing input used by W3C proof-chain fixtures that commit each proof to its predecessors.
+/// Standard proof-free document verification is attempted before this compatibility form.
+struct ProofChainDocument {
+    value: Value,
+    contexts: Option<String>,
+    default_proof_purpose: Option<ProofPurpose>,
+    issuer: Option<String>,
+}
+
+impl ProofChainDocument {
+    fn new(
+        document: &(dyn LinkedDataDocument + Sync),
+        predecessors: &[&Proof],
+    ) -> Result<Self, String> {
+        let mut value = document.to_value().map_err(|error| error.to_string())?;
+        let object = value.as_object_mut().ok_or_else(|| {
+            format!("{PROOF_VERIFICATION_ERROR}: secured document must be an object")
+        })?;
+
+        match predecessors {
+            [] => {
+                object.remove("proof");
+            }
+            [proof] => {
+                object.insert(
+                    "proof".to_string(),
+                    serde_json::to_value(proof).map_err(|error| error.to_string())?,
+                );
+            }
+            proofs => {
+                object.insert(
+                    "proof".to_string(),
+                    serde_json::to_value(proofs).map_err(|error| error.to_string())?,
+                );
+            }
+        }
+
+        // Some W3C fixtures embed a context document as an inline context entry. Normalize only
+        // this compatibility copy; the credential's parsed and serialized representation is unchanged.
+        if let Some(contexts) = object.get_mut("@context").and_then(Value::as_array_mut) {
+            for context in contexts {
+                let Value::Object(context_document) = context else {
+                    continue;
+                };
+
+                if context_document.len() == 1 {
+                    if let Some(inner) = context_document.remove("@context") {
+                        *context = inner;
+                    }
+                }
+            }
+        }
+
+        Ok(Self {
+            value,
+            contexts: document.get_contexts().map_err(|error| error.to_string())?,
+            default_proof_purpose: document.get_default_proof_purpose(),
+            issuer: document.get_issuer().map(str::to_string),
+        })
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl LinkedDataDocument for ProofChainDocument {
+    fn get_contexts(&self) -> Result<Option<String>, LdpError> {
+        Ok(self.contexts.clone())
+    }
+
+    fn to_value(&self) -> Result<Value, LdpError> {
+        Ok(self.value.clone())
+    }
+
+    fn get_default_proof_purpose(&self) -> Option<ProofPurpose> {
+        self.default_proof_purpose.clone()
+    }
+
+    fn get_issuer(&self) -> Option<&str> {
+        self.issuer.as_deref()
+    }
+
+    async fn to_dataset_for_signing(
+        &self,
+        parent: Option<&(dyn LinkedDataDocument + Sync)>,
+        context_loader: &mut ContextLoader,
+    ) -> Result<DataSet, LdpError> {
+        let json =
+            ssi_json_ld::syntax::to_value_with(self.value.clone(), || Default::default()).unwrap();
+
+        Ok(json_to_dataset(
+            json,
+            context_loader,
+            parent
+                .map(LinkedDataDocument::get_contexts)
+                .transpose()?
+                .flatten()
+                .as_deref()
+                .map(parse_ld_context)
+                .transpose()?,
+        )
+        .await?)
+    }
+}
+
+async fn verify_proof_candidates(
+    document: &(dyn LinkedDataDocument + Sync),
+    proof_set: Option<&OneOrMany<Proof>>,
+    candidates: Vec<&Proof>,
+    resolver: &dyn DIDResolver,
+    context_loader: &mut ContextLoader,
+) -> VerificationResult {
+    let all_proofs: Vec<&Proof> = proof_set.into_iter().flatten().collect();
+    let graph = match ProofDependencyGraph::new(&all_proofs) {
+        Ok(graph) => graph,
+        Err(error) => return VerificationResult::error(&error),
+    };
+    let Some(graph) = graph else {
+        let mut failures = VerificationResult::new();
+
+        for proof in candidates {
+            let mut result = proof.verify(document, resolver, context_loader).await;
+            let succeeded = result.errors.is_empty();
+
+            if succeeded {
+                result.checks.push(Check::Proof);
+
+                return result;
+            }
+
+            failures.append(&mut result);
+        }
+
+        return failures;
+    };
+
+    let candidate_count = candidates.len();
+    let candidate_indices: Vec<usize> = candidates
+        .iter()
+        .filter_map(|candidate| {
+            all_proofs
+                .iter()
+                .position(|proof| std::ptr::eq(*proof, *candidate))
+        })
+        .collect();
+
+    if candidate_indices.len() != candidate_count {
+        return VerificationResult::error(&format!(
+            "{PROOF_VERIFICATION_ERROR}: candidate proof is not present in allProofs"
+        ));
+    }
+
+    let mut referenced_by_candidate = vec![false; all_proofs.len()];
+
+    for candidate in &candidate_indices {
+        let ancestors = match graph.ordered_dependencies(*candidate) {
+            Ok(ancestors) => ancestors,
+            Err(error) => return VerificationResult::error(&error),
+        };
+
+        for ancestor in ancestors {
+            if ancestor != *candidate && candidate_indices.contains(&ancestor) {
+                referenced_by_candidate[ancestor] = true;
+            }
+        }
+    }
+
+    let targets: Vec<usize> = candidate_indices
+        .into_iter()
+        .filter(|index| !referenced_by_candidate[*index])
+        .collect();
+
+    if targets.is_empty() {
+        return VerificationResult::error(&format!(
+            "{PROOF_VERIFICATION_ERROR}: no terminal proof"
+        ));
+    }
+
+    let mut failures = VerificationResult::new();
+
+    for target in targets {
+        let order = match graph.ordered_dependencies(target) {
+            Ok(order) => order,
+            Err(error) => return VerificationResult::error(&error),
+        };
+        let mut candidate_result = VerificationResult::new();
+        let mut succeeded = true;
+
+        for index in order {
+            let mut result = all_proofs[index]
+                .verify(document, resolver, context_loader)
+                .await;
+
+            // Current implementations sign against a proof-free document. W3C's proof-chain
+            // fixtures commit later proofs to their predecessor set, so retry that form only
+            // after standard verification fails.
+            if !result.errors.is_empty() {
+                let proof_order = match graph.ordered_dependencies(index) {
+                    Ok(proof_order) => proof_order,
+                    Err(error) => return VerificationResult::error(&error),
+                };
+                let predecessors: Vec<&Proof> = proof_order[..proof_order.len() - 1]
+                    .iter()
+                    .map(|proof_index| all_proofs[*proof_index])
+                    .collect();
+                let chain_document = match ProofChainDocument::new(document, &predecessors) {
+                    Ok(chain_document) => chain_document,
+                    Err(error) => return VerificationResult::error(&error),
+                };
+
+                result = all_proofs[index]
+                    .verify(&chain_document, resolver, context_loader)
+                    .await;
+            }
+            let proof_succeeded = result.errors.is_empty();
+
+            candidate_result.append(&mut result);
+
+            if !proof_succeeded {
+                succeeded = false;
+                break;
+            }
+        }
+
+        if succeeded {
+            candidate_result.checks.push(Check::Proof);
+
+            return candidate_result;
+        }
+
+        failures.append(&mut candidate_result);
+    }
+
+    failures
+}
+
 pub const DEFAULT_CONTEXT: &str = "https://www.w3.org/2018/credentials/v1";
 pub const DEFAULT_CONTEXT_V2: &str = "https://www.w3.org/ns/credentials/v2";
+pub const NON_DID_ISSUER_WARNING: &str =
+    "Issuer authorization was not checked because the credential issuer is not a DID";
 
 // work around https://github.com/w3c/vc-test-suite/issues/103
 pub const ALT_DEFAULT_CONTEXT: &str = "https://w3.org/2018/credentials/v1";
@@ -861,6 +1196,8 @@ impl Credential {
         }
         // TODO: error if any unconvertable claims
         // TODO: unify with verify function?
+        let warn_unchecked_issuer = vc.has_non_did_issuer();
+
         let (proofs, matched_jwt) = match vc
             .filter_proofs(options_opt, Some((&header, &claims)), resolver)
             .await
@@ -900,6 +1237,10 @@ impl Credential {
                     .errors
                     .push(format!("Unable to verify signature: {}", err)),
             }
+            if results.checks.contains(&Check::JWS) && warn_unchecked_issuer {
+                results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+            }
+
             return (Some(vc), results);
         }
         // No JWS verified: try to verify a proof.
@@ -909,18 +1250,15 @@ impl Credential {
                 VerificationResult::error("No applicable JWS or proof"),
             );
         }
-        // Try verifying each proof until one succeeds
-        for proof in proofs {
-            let mut result = proof.verify(&vc, resolver, context_loader).await;
-            results.append(&mut result);
-            if results.errors.is_empty() {
-                results.checks.push(Check::Proof);
-                break;
-            };
-        }
+        results =
+            verify_proof_candidates(&vc, vc.proof.as_ref(), proofs, resolver, context_loader).await;
         if checks.contains(&Check::Status) {
             results.append(&mut vc.check_status(resolver, context_loader).await);
         }
+        if results.checks.contains(&Check::Proof) && warn_unchecked_issuer {
+            results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+        }
+
         (Some(vc), results)
     }
 
@@ -978,30 +1316,48 @@ impl Credential {
         Ok(())
     }
 
+    fn has_non_did_issuer(&self) -> bool {
+        self.issuer
+            .as_ref()
+            .map(|issuer| !issuer.get_id().starts_with("did:"))
+            .unwrap_or(false)
+    }
+
     async fn filter_proofs<'a>(
         &'a self,
         options: Option<LinkedDataProofOptions>,
         jwt_params: Option<(&Header, &JWTClaims)>,
         resolver: &'a dyn DIDResolver,
     ) -> Result<(Vec<&'a Proof>, bool), String> {
-        // Allow any of issuer's verification methods by default
+        // Restrict proofs to the issuer's verification methods only when the
+        // issuer is a DID. URL issuers are valid in the VC data model, but do
+        // not have a DID document from which to derive an allowed VM set.
         let mut options = options.unwrap_or_default();
-        let allowed_vms = match options.verification_method.take() {
-            Some(vm) => vec![vm.to_string()],
+        let restrict_allowed_vms = match options.verification_method.take() {
+            Some(vm) => Some(vec![vm.to_string()]),
             None => {
-                if let Some(ref issuer) = self.issuer {
-                    let issuer_did = issuer.get_id();
-                    // https://w3c.github.io/did-core/#assertion
-                    // assertionMethod is the verification relationship usually used for issuing
-                    // VCs.
-                    let proof_purpose = options
-                        .proof_purpose
-                        .clone()
-                        .unwrap_or(ProofPurpose::AssertionMethod);
-                    get_verification_methods_for_purpose(&issuer_did, resolver, proof_purpose)
-                        .await?
+                if let Some(issuer) = &self.issuer {
+                    let issuer_id = issuer.get_id();
+
+                    if issuer_id.starts_with("did:") {
+                        let proof_purpose = options
+                            .proof_purpose
+                            .clone()
+                            .unwrap_or(ProofPurpose::AssertionMethod);
+
+                        Some(
+                            get_verification_methods_for_purpose(
+                                &issuer_id,
+                                resolver,
+                                proof_purpose,
+                            )
+                            .await?,
+                        )
+                    } else {
+                        None
+                    }
                 } else {
-                    Vec::new()
+                    None
                 }
             }
         };
@@ -1009,14 +1365,21 @@ impl Credential {
             .proof
             .iter()
             .flatten()
-            .filter(|proof| proof.matches(&options, &allowed_vms))
+            .filter(|proof| {
+                proof.matches_options(&options)
+                    && if let Some(allowed_vms) = &restrict_allowed_vms {
+                        proof.matches_vms(allowed_vms)
+                    } else {
+                        true
+                    }
+            })
             .collect();
         let matched_jwt = match jwt_params {
             Some((header, claims)) => jwt_matches(
                 header,
                 claims,
                 &options,
-                &Some(allowed_vms),
+                &restrict_allowed_vms,
                 &ProofPurpose::AssertionMethod,
             ),
             None => false,
@@ -1031,6 +1394,8 @@ impl Credential {
         resolver: &dyn DIDResolver,
         context_loader: &mut ContextLoader,
     ) -> VerificationResult {
+        let warn_unchecked_issuer = self.has_non_did_issuer();
+
         let checks = options
             .as_ref()
             .and_then(|opts| opts.checks.clone())
@@ -1045,16 +1410,9 @@ impl Credential {
             return VerificationResult::error("No applicable proof");
             // TODO: say why, e.g. expired
         }
-        let mut results = VerificationResult::new();
-        // Try verifying each proof until one succeeds
-        for proof in proofs {
-            let mut result = proof.verify(self, resolver, context_loader).await;
-            results.append(&mut result);
-            if result.errors.is_empty() {
-                results.checks.push(Check::Proof);
-                break;
-            };
-        }
+        let mut results =
+            verify_proof_candidates(self, self.proof.as_ref(), proofs, resolver, context_loader)
+                .await;
         if checks.contains(&Check::Status) {
             results.append(&mut self.check_status(resolver, context_loader).await);
         }
@@ -1062,6 +1420,10 @@ impl Credential {
         if checks.contains(&Check::Schema) {
             results.append(&mut self.check_schema(resolver, context_loader).await);
         }
+        if results.checks.contains(&Check::Proof) && warn_unchecked_issuer {
+            results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+        }
+
         results
     }
 
@@ -1124,22 +1486,20 @@ impl Credential {
                         Value::String(s) => Some(Context::URI(URI::String(s.clone()))),
                         Value::Object(obj) => {
                             // Convert serde_json::Map to HashMap
-                            let hashmap: HashMap<String, Value> = obj.iter()
-                                .map(|(k, v)| (k.clone(), v.clone()))
-                                .collect();
+                            let hashmap: HashMap<String, Value> =
+                                obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
                             Some(Context::Object(hashmap))
-                        },
+                        }
                         _ => None,
                     })
                     .collect()
             }
             Value::Object(obj) => {
                 // Convert serde_json::Map to HashMap
-                let hashmap: HashMap<String, Value> = obj.iter()
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect();
+                let hashmap: HashMap<String, Value> =
+                    obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
                 vec![Context::Object(hashmap)]
-            },
+            }
             _ => return, // Skip invalid context values
         };
 
@@ -1187,28 +1547,24 @@ impl Credential {
             let status_value = match serde_json::to_value(entry.clone()) {
                 Ok(status) => status,
                 Err(e) => {
-                    result.errors.push(format!(
-                        "Unable to convert credentialStatus: {}",
-                        e
-                    ));
+                    result
+                        .errors
+                        .push(format!("Unable to convert credentialStatus: {}", e));
                     return result;
                 }
             };
 
-            let checkable_status: CheckableStatus =
-                match serde_json::from_value(status_value) {
-                    Ok(checkable_status) => checkable_status,
-                    Err(e) => {
-                        result.errors.push(format!(
-                            "Unable to parse credentialStatus: {}",
-                            e
-                        ));
-                        return result;
-                    }
-                };
+            let checkable_status: CheckableStatus = match serde_json::from_value(status_value) {
+                Ok(checkable_status) => checkable_status,
+                Err(e) => {
+                    result
+                        .errors
+                        .push(format!("Unable to parse credentialStatus: {}", e));
+                    return result;
+                }
+            };
 
-            let mut entry_result =
-                checkable_status.check(self, resolver, context_loader).await;
+            let mut entry_result = checkable_status.check(self, resolver, context_loader).await;
             result.append(&mut entry_result);
 
             // Stop on the first failing entry — the credential is
@@ -1615,15 +1971,8 @@ impl Presentation {
                 VerificationResult::error("No applicable JWS or proof"),
             );
         }
-        // Try verifying each proof until one succeeds
-        for proof in proofs {
-            let mut result = proof.verify(&vp, resolver, context_loader).await;
-            if result.errors.is_empty() {
-                result.checks.push(Check::Proof);
-                return (Some(vp), result);
-            };
-            results.append(&mut result);
-        }
+        results =
+            verify_proof_candidates(&vp, vp.proof.as_ref(), proofs, resolver, context_loader).await;
         (Some(vp), results)
     }
 
@@ -1720,19 +2069,18 @@ impl Presentation {
         // Convert proof context Value to Context objects
         let proof_contexts: Vec<Context> = match proof_context {
             Value::String(s) => vec![Context::URI(URI::String(s.clone()))],
-            Value::Array(arr) => {
-                arr.iter()
-                    .filter_map(|v| match v {
-                        Value::String(s) => Some(Context::URI(URI::String(s.clone()))),
-                        Value::Object(obj) => {
-                            let hashmap: HashMap<String, Value> =
-                                obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-                            Some(Context::Object(hashmap))
-                        }
-                        _ => None,
-                    })
-                    .collect()
-            }
+            Value::Array(arr) => arr
+                .iter()
+                .filter_map(|v| match v {
+                    Value::String(s) => Some(Context::URI(URI::String(s.clone()))),
+                    Value::Object(obj) => {
+                        let hashmap: HashMap<String, Value> =
+                            obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                        Some(Context::Object(hashmap))
+                    }
+                    _ => None,
+                })
+                .collect(),
             Value::Object(obj) => {
                 let hashmap: HashMap<String, Value> =
                     obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
@@ -1801,15 +2149,13 @@ impl Presentation {
             })
             .collect();
         let matched_jwt = match jwt_params {
-            Some((header, claims)) => {
-                jwt_matches(
-                    header,
-                    claims,
-                    &options,
-                    &restrict_allowed_vms,
-                    &ProofPurpose::Authentication,
-                )
-            },
+            Some((header, claims)) => jwt_matches(
+                header,
+                claims,
+                &options,
+                &restrict_allowed_vms,
+                &ProofPurpose::Authentication,
+            ),
             None => false,
         };
         Ok((matched_proofs, matched_jwt))
@@ -1832,7 +2178,7 @@ impl Presentation {
                 "credentialStatus check not valid for VerifiablePresentation",
             );
         }
-        let mut results = VerificationResult::new();
+        let results;
         let (proofs, _) = match self.filter_proofs(options, None, resolver).await {
             Ok(proofs) => proofs,
             Err(err) => {
@@ -1843,15 +2189,9 @@ impl Presentation {
             return VerificationResult::error("No applicable proof");
             // TODO: say why, e.g. expired
         }
-        // Try verifying each proof until one succeeds
-        for proof in proofs {
-            let mut result = proof.verify(self, resolver, context_loader).await;
-            if result.errors.is_empty() {
-                result.checks.push(Check::Proof);
-                return result;
-            };
-            results.append(&mut result);
-        }
+        results =
+            verify_proof_candidates(self, self.proof.as_ref(), proofs, resolver, context_loader)
+                .await;
         results
     }
 
@@ -2106,6 +2446,42 @@ pub(crate) mod tests {
     use ssi_json_ld::urdna2015;
     use ssi_jws::sign_bytes_b64;
     use ssi_ldp::{ProofSuite, ProofSuiteType};
+
+    #[async_std::test]
+    async fn allows_did_verification_method_for_url_issuer() {
+        let credential = Credential::from_json(
+            r#"{
+                "@context": [
+                    "https://www.w3.org/ns/credentials/v2",
+                    "https://www.w3.org/ns/credentials/examples/v2",
+                    "https://w3id.org/security/suites/ed25519-2020/v1"
+                ],
+                "type": ["VerifiableCredential", "AlumniCredential"],
+                "issuer": "https://vc.example/issuers/5678",
+                "validFrom": "2023-01-01T00:00:00Z",
+                "credentialSubject": {
+                    "id": "did:example:abcdefgh",
+                    "alumniOf": "The School of Examples"
+                },
+                "proof": {
+                    "type": "Ed25519Signature2020",
+                    "created": "2023-02-24T23:36:38Z",
+                    "verificationMethod": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+                    "proofPurpose": "assertionMethod",
+                    "proofValue": "z57Mm1vboMtZiCyJ4aReZsv8co4Re64Y8GEjL1ZARzMbXZgkARFLqFs1P345NpPGG2hgCrS4nNdvJhpwnrNyG3kEF"
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let (proofs, matched_jwt) = credential
+            .filter_proofs(None, None, &DIDExample)
+            .await
+            .unwrap();
+
+        assert_eq!(proofs.len(), 1);
+        assert!(!matched_jwt);
+    }
 
     #[test]
     fn numeric_date() {

@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ssi_dids::did_resolve::{resolve_key, DIDResolver};
-use ssi_json_ld::{ContextLoader, CREDENTIALS_V2_CONTEXT, W3ID_DATA_INTEGRITY_V1_CONTEXT};
+use ssi_json_ld::{
+    ContextLoader, CREDENTIALS_V2_CONTEXT, W3ID_DATA_INTEGRITY_V1_CONTEXT,
+    W3ID_DATA_INTEGRITY_V2_CONTEXT,
+};
 use ssi_jwk::{Algorithm, Base64urlUInt, JWK};
 use ssi_jws::VerificationWarnings;
 
@@ -158,8 +161,9 @@ impl DataIntegrityProof {
         proof.cryptosuite = Some(cryptosuite.clone());
         if !document_has_context(document, CREDENTIALS_V2_CONTEXT)?
             && !document_has_context(document, W3ID_DATA_INTEGRITY_V1_CONTEXT)?
+            && !document_has_context(document, W3ID_DATA_INTEGRITY_V2_CONTEXT)?
         {
-            proof.context = serde_json::json!([W3ID_DATA_INTEGRITY_V1_CONTEXT]);
+            proof.context = serde_json::json!([W3ID_DATA_INTEGRITY_V2_CONTEXT]);
         }
         let message =
             Self::jws_payload(&cryptosuite, &jwa, &proof, document, context_loader).await?;
