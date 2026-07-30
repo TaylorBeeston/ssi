@@ -20,14 +20,20 @@ use thiserror::Error;
 /// Remote JSON-LD document.
 pub type RemoteDocument = json_ld::RemoteDocument<IriBuf, Span>;
 
-/// Error raised by the `json_to_dataset` function.
-pub type ToRdfError<
+/// Error raised by the [`json_to_dataset`] function.
+#[derive(Debug, Error)]
+pub enum ToRdfError<
     E = UnknownContext,
     C = json_ld::loader::ContextLoaderError<
         UnknownContext,
         Meta<json_ld::loader::ExtractContextError<Span>, Span>,
     >,
-> = json_ld::ToRdfError<Span, E, C>;
+> {
+    #[error(transparent)]
+    Processing(json_ld::ToRdfError<Span, E, C>),
+    #[error("DATA_LOSS_DETECTION_ERROR: {0}")]
+    DataLoss(String),
+}
 
 pub const CREDENTIALS_V1_CONTEXT: Iri = iri!("https://www.w3.org/2018/credentials/v1");
 pub const CREDENTIALS_V2_CONTEXT: Iri = iri!("https://www.w3.org/ns/credentials/v2");
@@ -55,6 +61,7 @@ pub const W3ID_JWS2020_V1_CONTEXT: Iri = iri!("https://w3id.org/security/suites/
 pub const W3ID_ED2020_V1_CONTEXT: Iri = iri!("https://w3id.org/security/suites/ed25519-2020/v1");
 pub const W3ID_MULTIKEY_V1_CONTEXT: Iri = iri!("https://w3id.org/security/multikey/v1");
 pub const W3ID_DATA_INTEGRITY_V1_CONTEXT: Iri = iri!("https://w3id.org/security/data-integrity/v1");
+pub const W3ID_DATA_INTEGRITY_V2_CONTEXT: Iri = iri!("https://w3id.org/security/data-integrity/v2");
 pub const BLOCKCHAIN2021_V1_CONTEXT: Iri =
     iri!("https://w3id.org/security/suites/blockchain-2021/v1");
 pub const CITIZENSHIP_V1_CONTEXT: Iri = iri!("https://w3id.org/citizenship/v1");
@@ -194,6 +201,10 @@ lazy_static::lazy_static! {
     pub static ref W3ID_DATA_INTEGRITY_V1_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
         W3ID_DATA_INTEGRITY_V1_CONTEXT,
         ssi_contexts::W3ID_DATA_INTEGRITY_V1
+    );
+    pub static ref W3ID_DATA_INTEGRITY_V2_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
+        W3ID_DATA_INTEGRITY_V2_CONTEXT,
+        ssi_contexts::W3ID_DATA_INTEGRITY_V2
     );
     pub static ref BLOCKCHAIN2021_V1_CONTEXT_DOCUMENT: RemoteDocument = load_static_context(
         BLOCKCHAIN2021_V1_CONTEXT,
@@ -396,6 +407,7 @@ impl Loader<IriBuf, Span> for StaticLoader {
                     W3ID_ED2020_V1_CONTEXT => Ok(W3ID_ED2020_V1_CONTEXT_DOCUMENT.clone()),
                     W3ID_MULTIKEY_V1_CONTEXT => Ok(W3ID_MULTIKEY_V1_CONTEXT_DOCUMENT.clone()),
                     W3ID_DATA_INTEGRITY_V1_CONTEXT => Ok(W3ID_DATA_INTEGRITY_V1_CONTEXT_DOCUMENT.clone()),
+                    W3ID_DATA_INTEGRITY_V2_CONTEXT => Ok(W3ID_DATA_INTEGRITY_V2_CONTEXT_DOCUMENT.clone()),
                     BLOCKCHAIN2021_V1_CONTEXT => Ok(BLOCKCHAIN2021_V1_CONTEXT_DOCUMENT.clone()),
                     CITIZENSHIP_V1_CONTEXT => Ok(CITIZENSHIP_V1_CONTEXT_DOCUMENT.clone()),
                     VACCINATION_V1_CONTEXT => Ok(VACCINATION_V1_CONTEXT_DOCUMENT.clone()),
@@ -601,9 +613,38 @@ pub enum ContextError {
     InvalidContext(#[from] Meta<json_ld::syntax::context::InvalidContext, Span>),
 }
 
+fn unwrap_context_documents(value: &mut serde_json::Value) -> bool {
+    let serde_json::Value::Array(contexts) = value else {
+        return false;
+    };
+    let mut changed = false;
+
+    for context in contexts {
+        let serde_json::Value::Object(object) = context else {
+            continue;
+        };
+
+        if object.len() != 1 || !object.contains_key("@context") {
+            continue;
+        }
+
+        *context = object.remove("@context").unwrap();
+        changed = true;
+    }
+
+    changed
+}
+
 /// Parse a JSON-LD context.
 pub fn parse_ld_context(content: &str) -> Result<RemoteContextReference, ContextError> {
     let json = json_syntax::Value::parse_str(content, |span| span)?;
+    let mut normalized: serde_json::Value =
+        serde_json::from_str(content).expect("json-syntax already validated the input");
+    let json = if unwrap_context_documents(&mut normalized) {
+        json_syntax::to_value_with(normalized, Span::default).unwrap()
+    } else {
+        json
+    };
     let context = json_ld::syntax::context::Value::try_from_json(json)?;
     Ok(RemoteContextReference::Loaded(RemoteContext::new(
         None, None, context,
@@ -645,7 +686,29 @@ where
     let mut to_rdf = doc
         .to_rdf_using(&mut generator, loader, options)
         .await
-        .map_err(Box::new)?;
+        .map_err(|error| {
+            Box::new(
+                if error.code() == json_ld::syntax::ErrorCode::KeyExpansionFailed {
+                    ToRdfError::DataLoss("undefined JSON-LD term".to_string())
+                } else {
+                    ToRdfError::Processing(error)
+                },
+            )
+        })?;
+
+    if let Some(term) = to_rdf
+        .document()
+        .traverse()
+        .filter_map(|fragment| fragment.into_id())
+        .find_map(|id| match id {
+            json_ld::Id::Invalid(term) if !term.is_empty() => Some(term),
+            json_ld::Id::Invalid(_) | json_ld::Id::Valid(_) => None,
+        })
+    {
+        return Err(Box::new(ToRdfError::DataLoss(format!(
+            "undefined JSON-LD term or relative IRI `{term}`"
+        ))));
+    }
     Ok(to_rdf
         .cloned_quads()
         .map(|q| {
@@ -805,5 +868,86 @@ mod test {
         );
 
         let _doc = result.unwrap();
+    }
+    #[tokio::test]
+    async fn rejects_json_ld_data_loss() {
+        let inputs = [
+            json!({
+                "@context": ["https://www.w3.org/2018/credentials/v1"],
+                "type": ["VerifiableCredential", "InvalidType"],
+                "issuer": "did:example:issuer",
+                "issuanceDate": "2020-03-16T22:37:26Z",
+                "credentialSubject": { "id": "did:example:subject" }
+            }),
+            json!({
+                "@context": ["https://www.w3.org/2018/credentials/v1"],
+                "type": ["VerifiableCredential"],
+                "issuer": "did:example:issuer",
+                "issuanceDate": "2020-03-16T22:37:26Z",
+                "credentialSubject": {
+                    "id": "did:example:subject",
+                    "invalidTerm": "invalidTerm"
+                }
+            }),
+        ];
+
+        for input in inputs {
+            let input = syntax::to_value_with(input, Default::default()).unwrap();
+            let error = json_to_dataset(input, &mut ContextLoader::default(), None)
+                .await
+                .unwrap_err();
+
+            assert!(
+                error.to_string().starts_with("DATA_LOSS_DETECTION_ERROR:"),
+                "unexpected error: {error}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn expands_cryptosuite_as_typed_string() {
+        let input = syntax::to_value_with(
+            json!({
+                "@context": [
+                    "https://www.w3.org/2018/credentials/v1",
+                    "https://w3id.org/security/data-integrity/v2"
+                ],
+                "type": "DataIntegrityProof",
+                "cryptosuite": "eddsa-rdfc-2022"
+            }),
+            Default::default(),
+        )
+        .unwrap();
+        let dataset = json_to_dataset(input, &mut ContextLoader::default(), None)
+            .await
+            .unwrap();
+
+        assert!(dataset.iter().any(|quad| {
+            matches!(
+                quad.object(),
+                rdf_types::Object::Literal(rdf_types::Literal::TypedString(value, ty))
+                    if value.as_str() == "eddsa-rdfc-2022"
+                        && ty.as_str() == "https://w3id.org/security#cryptosuiteString"
+            )
+        }));
+    }
+
+    #[tokio::test]
+    async fn expands_minimal_v2_credential() {
+        let input = syntax::to_value_with(
+            json!({
+                "@context": ["https://www.w3.org/ns/credentials/v2"],
+                "type": ["VerifiableCredential"],
+                "issuer": "did:example:issuer",
+                "validFrom": "2023-01-01T00:00:00Z",
+                "credentialSubject": { "id": "did:example:subject" }
+            }),
+            Default::default(),
+        )
+        .unwrap();
+
+        json_to_dataset(input, &mut ContextLoader::default(), None)
+            .await
+            .unwrap();
     }
 }

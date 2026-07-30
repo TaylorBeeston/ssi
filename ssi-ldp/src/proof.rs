@@ -9,6 +9,7 @@ use super::*;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use ssi_core::one_or_many::OneOrMany;
 use ssi_dids::did_resolve::DIDResolver;
 use ssi_dids::VerificationRelationship as ProofPurpose;
 use ssi_json_ld::{json_to_dataset, parse_ld_context, ContextLoader};
@@ -36,6 +37,8 @@ pub struct Proof {
     // TODO: use consistent types for context
     #[serde(default, skip_serializing_if = "Value::is_null")]
     pub context: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     #[serde(rename = "type")]
     pub type_: ProofSuiteType,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -61,6 +64,9 @@ pub struct Proof {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cryptosuite: Option<dataintegrity::DataIntegrityCryptoSuite>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "previousProof")]
+    pub previous_proof: Option<OneOrMany<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(flatten)]
     pub property_set: Option<Map<String, Value>>,
 }
@@ -70,6 +76,7 @@ impl Proof {
         Self {
             type_,
             context: Value::default(),
+            id: None,
             proof_purpose: None,
             proof_value: None,
             challenge: None,
@@ -81,6 +88,7 @@ impl Proof {
             jws: None,
             property_set: None,
             cryptosuite: None,
+            previous_proof: None,
         }
     }
 
@@ -449,6 +457,11 @@ fn verify_proof_consistency(
             .map(|cc| cc.to_string())
             .as_deref(),
     )?;
+    graph_ref.take_objects_and_assert_eq_iris(
+        proof_id,
+        iri!("https://w3id.org/security#previousProof"),
+        proof.previous_proof.as_ref(),
+    )?;
 
     graph_ref.take_object_and_assert_eq_iri(
         proof_id,
@@ -661,6 +674,51 @@ trait ProofGraph:
         })
     }
 
+    /// Takes every statement matching `s p ?` and checks that its IRI objects
+    /// equal the expected unordered set.
+    fn take_objects_and_assert_eq_iris(
+        &mut self,
+        s: &Self::Subject,
+        p: Iri,
+        expected_o: Option<&OneOrMany<String>>,
+    ) -> Result<(), Box<ProofInconsistency>> {
+        let mut actual = Vec::new();
+
+        while let Some(rdf_types::Triple(_, _, object)) =
+            self.take_match(rdf_types::Triple(Some(s), Some(&p), None))
+        {
+            match object {
+                rdf_types::Term::Iri(iri) => actual.push(iri.to_string()),
+                object => {
+                    return Err(Box::new(ProofInconsistency::ObjectMismatch(
+                        p.to_owned(),
+                        "IRI".to_string(),
+                        object.to_string(),
+                    )))
+                }
+            }
+        }
+
+        let mut expected: Vec<String> = expected_o
+            .into_iter()
+            .flatten()
+            .map(ToString::to_string)
+            .collect();
+
+        actual.sort_unstable();
+        expected.sort_unstable();
+
+        if actual == expected {
+            Ok(())
+        } else {
+            Err(Box::new(ProofInconsistency::ObjectMismatch(
+                p.to_owned(),
+                format!("{expected:?}"),
+                format!("{actual:?}"),
+            )))
+        }
+    }
+
     /// When `expected_o` is `Some(iri)`.
     /// take any statement of the form `s p o` for the given `s` and `p`
     /// and checks that `o` is equal to `iri`.
@@ -745,8 +803,9 @@ impl ProofGraph for grdf::HashGraph<rdf_types::Subject, IriBuf, rdf_types::Objec
             rdf_types::Object::Iri(iri) => iri.as_str() == *expected,
             rdf_types::Object::Literal(rdf_types::Literal::String(s)) => s.as_str() == *expected,
             // Handle typed literals with cryptosuite datatype (fixes DataIntegrity proof serialization)
-            rdf_types::Object::Literal(rdf_types::Literal::TypedString(s, ty)) 
-                if *ty == iri!("https://w3id.org/security#cryptosuiteString") => {
+            rdf_types::Object::Literal(rdf_types::Literal::TypedString(s, ty))
+                if *ty == iri!("https://w3id.org/security#cryptosuiteString") =>
+            {
                 s.as_str() == *expected
             }
             _ => false,
