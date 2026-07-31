@@ -265,10 +265,7 @@ impl DIDResolver for DIDKey {
                 );
 
                 let mut ka_props = BTreeMap::new();
-                ka_props.insert(
-                    "publicKeyMultibase".to_string(),
-                    Value::String(x25519_mb),
-                );
+                ka_props.insert("publicKeyMultibase".to_string(), Value::String(x25519_mb));
 
                 key_agreement = Some(vec![VerificationMethod::Map(VerificationMethodMap {
                     id: format!("{}#{}", did, ka_id),
@@ -281,31 +278,30 @@ impl DIDResolver for DIDKey {
         }
         // Build the primary verification method map. For Ed25519 (did:key with 0xED01 prefix),
         // prefer publicKeyMultibase per 2020 suite; for others, keep publicKeyJwk.
-        let primary_vm_map = if data[0] == DID_KEY_ED25519_PREFIX[0]
-            && data[1] == DID_KEY_ED25519_PREFIX[1]
-        {
-            let mut props = BTreeMap::new();
-            props.insert(
-                "publicKeyMultibase".to_string(),
-                Value::String(method_specific_id.to_string()),
-            );
-            VerificationMethodMap {
-                id: format!("{}#{}", did, method_specific_id),
-                type_: vm_type,
-                controller: did.to_string(),
-                public_key_jwk: None,
-                property_set: Some(props),
-                ..Default::default()
-            }
-        } else {
-            VerificationMethodMap {
-                id: format!("{}#{}", did, method_specific_id),
-                type_: vm_type,
-                controller: did.to_string(),
-                public_key_jwk: Some(jwk),
-                ..Default::default()
-            }
-        };
+        let primary_vm_map =
+            if data[0] == DID_KEY_ED25519_PREFIX[0] && data[1] == DID_KEY_ED25519_PREFIX[1] {
+                let mut props = BTreeMap::new();
+                props.insert(
+                    "publicKeyMultibase".to_string(),
+                    Value::String(method_specific_id.to_string()),
+                );
+                VerificationMethodMap {
+                    id: format!("{}#{}", did, method_specific_id),
+                    type_: vm_type,
+                    controller: did.to_string(),
+                    public_key_jwk: None,
+                    property_set: Some(props),
+                    ..Default::default()
+                }
+            } else {
+                VerificationMethodMap {
+                    id: format!("{}#{}", did, method_specific_id),
+                    type_: vm_type,
+                    controller: did.to_string(),
+                    public_key_jwk: Some(jwk),
+                    ..Default::default()
+                }
+            };
 
         let doc = Document {
             context: Contexts::Many(vec![
@@ -461,7 +457,10 @@ mod tests {
             _ => unreachable!(),
         };
         // Expect Ed25519VerificationKey2020 to expose publicKeyMultibase instead of publicKeyJwk
-        let props = vm.property_set.as_ref().expect("expected property_set with publicKeyMultibase");
+        let props = vm
+            .property_set
+            .as_ref()
+            .expect("expected property_set with publicKeyMultibase");
         let pkmb = props
             .get("publicKeyMultibase")
             .and_then(|v| v.as_str())

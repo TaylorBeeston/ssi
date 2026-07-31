@@ -106,11 +106,34 @@ impl Proof {
         }
     }
 
-    pub fn with_properties(self, properties: Option<Map<String, Value>>) -> Self {
-        Self {
-            property_set: properties,
-            ..self
+    pub fn with_properties(mut self, properties: Option<Map<String, Value>>) -> Self {
+        let Some(mut properties) = properties else {
+            return self;
+        };
+
+        if self.id.is_none() {
+            if let Some(Value::String(id)) = properties.get("id") {
+                self.id = Some(id.clone());
+                properties.remove("id");
+            }
+        } else {
+            properties.remove("id");
         }
+
+        if self.previous_proof.is_none() {
+            if let Some(previous_proof) = properties
+                .get("previousProof")
+                .and_then(|value| serde_json::from_value(value.clone()).ok())
+            {
+                self.previous_proof = Some(previous_proof);
+                properties.remove("previousProof");
+            }
+        } else {
+            properties.remove("previousProof");
+        }
+
+        self.property_set = Some(properties);
+        self
     }
 
     /// Check that a proof matches the given options.
@@ -862,5 +885,62 @@ impl ProofGraph for grdf::HashGraph<rdf_types::Subject, IriBuf, rdf_types::Objec
             }
             _ => false,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reserved_extension_properties_are_promoted_to_typed_fields() {
+        let properties = Map::from([
+            (
+                "id".to_string(),
+                Value::String("urn:uuid:proof-1".to_string()),
+            ),
+            (
+                "previousProof".to_string(),
+                Value::String("urn:uuid:proof-0".to_string()),
+            ),
+        ]);
+        let proof =
+            Proof::new(ProofSuiteType::DataIntegrityProof).with_properties(Some(properties));
+
+        assert_eq!(proof.id.as_deref(), Some("urn:uuid:proof-1"));
+        assert_eq!(
+            proof.previous_proof,
+            Some(OneOrMany::One("urn:uuid:proof-0".to_string()))
+        );
+        assert_eq!(proof.property_set, Some(Map::new()));
+    }
+
+    #[test]
+    fn typed_proof_properties_take_precedence_over_extensions() {
+        let mut proof = Proof::new(ProofSuiteType::DataIntegrityProof);
+        proof.id = Some("urn:uuid:proof-1".to_string());
+        proof.previous_proof = Some(OneOrMany::One("urn:uuid:proof-0".to_string()));
+        let properties = Map::from([
+            (
+                "id".to_string(),
+                Value::String("urn:uuid:override".to_string()),
+            ),
+            (
+                "previousProof".to_string(),
+                Value::String("urn:uuid:override".to_string()),
+            ),
+            ("custom".to_string(), Value::Bool(true)),
+        ]);
+        let proof = proof.with_properties(Some(properties));
+
+        assert_eq!(proof.id.as_deref(), Some("urn:uuid:proof-1"));
+        assert_eq!(
+            proof.previous_proof,
+            Some(OneOrMany::One("urn:uuid:proof-0".to_string()))
+        );
+        assert_eq!(
+            proof.property_set,
+            Some(Map::from([("custom".to_string(), Value::Bool(true))]))
+        );
     }
 }
