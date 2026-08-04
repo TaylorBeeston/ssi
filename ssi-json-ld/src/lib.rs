@@ -862,7 +862,7 @@ mod test {
         ];
 
         for input in inputs {
-            let input = syntax::to_value_with(input, Default::default()).unwrap();
+            let input = syntax::to_value_with(input, Span::default).unwrap();
             let error = json_to_dataset(input, &mut ContextLoader::default(), None)
                 .await
                 .unwrap_err();
@@ -897,14 +897,14 @@ mod test {
                 "type": "DataIntegrityProof",
                 "cryptosuite": "eddsa-rdfc-2022"
             }),
-            Default::default(),
+            Span::default,
         )
         .unwrap();
         let dataset = json_to_dataset(input, &mut ContextLoader::default(), None)
             .await
             .unwrap();
 
-        assert!(dataset.iter().any(|quad| {
+        assert!(dataset.quads().any(|quad| {
             matches!(
                 quad.object(),
                 rdf_types::Object::Literal(rdf_types::Literal::TypedString(value, ty))
@@ -924,7 +924,7 @@ mod test {
                 "validFrom": "2023-01-01T00:00:00Z",
                 "credentialSubject": { "id": "did:example:subject" }
             }),
-            Default::default(),
+            Span::default,
         )
         .unwrap();
 

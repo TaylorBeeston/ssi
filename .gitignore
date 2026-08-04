@@ -1,4 +1,9 @@
 /target
-Cargo.lock
+
+# Cargo.lock is intentionally tracked in this fork (upstream ignores it). Every published
+# version of `core2` is yanked, and it is a non-optional transitive dependency via
+# libipld -> ssi-vc, so `cargo generate-lockfile` can no longer resolve this workspace from
+# scratch. A committed lock keeps CI and vendored consumers building; drop it only once the
+# libipld/core2 chain is bumped.
 
 .vscode
