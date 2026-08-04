@@ -8,7 +8,7 @@ description = "vc-test-suite test driver for ssi"
 publish = false
 
 [dependencies]
-ssi = { path = "../", features = ["example-http-issuer"] }
+ssi = { path = "../" }
 ssi-ldp = { path = "../ssi-ldp", default-features = false, features = ["test"] }
 ssi-dids = { path = "../ssi-dids", features = ["example"] }
 async-std = { version = "1.9", features = ["attributes"] }

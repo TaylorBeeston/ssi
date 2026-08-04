@@ -301,6 +301,7 @@ pub enum Check {
     JWS,
     Status,
     Schema,
+    IssuerAuthorization,
 }
 
 impl FromStr for Check {
@@ -311,6 +312,7 @@ impl FromStr for Check {
             "JWS" => Ok(Self::JWS),
             "credentialStatus" => Ok(Self::Status),
             "credentialSchema" => Ok(Self::Schema),
+            "issuerAuthorization" => Ok(Self::IssuerAuthorization),
             _ => Err(Error::UnsupportedCheck),
         }
     }
@@ -330,6 +332,7 @@ impl From<Check> for String {
             Check::JWS => "JWS".to_string(),
             Check::Status => "credentialStatus".to_string(),
             Check::Schema => "credentialSchema".to_string(),
+            Check::IssuerAuthorization => "issuerAuthorization".to_string(),
         }
     }
 }

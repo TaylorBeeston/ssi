@@ -16,7 +16,6 @@
 //! `solana`              |         | Enable Solana related signature suites and cryptographic dependencies.
 //! `ring`                |         | Use the [ring](https://crates.io/crates/ring) crate for RSA, Ed25519, and SHA-256 functionality.
 //! `http-did`            |         | Enable DID resolution tests using [hyper](https://crates.io/crates/hyper) and [tokio](https://crates.io/crates/tokio).
-//! `example-http-issuer` |         | Enable resolving example HTTPS Verifiable credential Issuer URL, for [VC Test Suite](https://github.com/w3c/vc-test-suite/).
 #![cfg_attr(docsrs, feature(doc_auto_cfg), feature(doc_cfg))]
 
 // maintain old structure here

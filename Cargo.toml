@@ -43,7 +43,6 @@ solana = ["ssi-ldp/solana"]
 ring = ["ssi-jwk/ring", "ssi-jws/ring", "ssi-crypto/ring"]
 
 http-did = ["ssi-dids/http"]
-example-http-issuer = ["ssi-ldp/example-http-issuer"]
 
 # Backward compatibility features
 ed25519-dalek = ["ed25519"]

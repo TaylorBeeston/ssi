@@ -1231,6 +1231,112 @@ impl DIDResolver for HTTPDIDResolver {
     }
 }
 
+/// Resolve controlled identifier documents supplied by the caller.
+///
+/// This is useful when the identifier is not a DID, so a DID method cannot
+/// resolve it, but the caller has already dereferenced the identifier's
+/// document.
+#[derive(Clone, Default)]
+pub struct StaticDocumentResolver {
+    pub documents: HashMap<String, Document>,
+}
+
+impl StaticDocumentResolver {
+    pub fn new(documents: HashMap<String, Document>) -> Self {
+        Self { documents }
+    }
+
+    /// Parse controlled identifier documents from a mixed JSON document map.
+    ///
+    /// JSON-LD context documents and documents whose `id` does not match their
+    /// map key are ignored.
+    pub fn from_json_map(document_map: &HashMap<String, String>) -> Self {
+        let documents = document_map
+            .iter()
+            .filter(|(identifier, _)| {
+                identifier.starts_with("http://") || identifier.starts_with("https://")
+            })
+            .filter_map(|(identifier, json)| {
+                let document = Document::from_json(json).ok()?;
+
+                (document.id.to_string() == *identifier).then(|| (identifier.clone(), document))
+            })
+            .collect();
+
+        Self { documents }
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl DIDResolver for StaticDocumentResolver {
+    async fn resolve(
+        &self,
+        identifier: &str,
+        _input_metadata: &ResolutionInputMetadata,
+    ) -> (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ) {
+        if let Some(document) = self.documents.get(identifier) {
+            return (
+                ResolutionMetadata::default(),
+                Some(document.clone()),
+                Some(DocumentMetadata::default()),
+            );
+        }
+
+        if (identifier == "https:" || identifier == "http:")
+            && self
+                .documents
+                .keys()
+                .any(|document_id| document_id.starts_with(identifier))
+        {
+            return (
+                ResolutionMetadata::default(),
+                Some(Document::new(identifier)),
+                Some(DocumentMetadata::default()),
+            );
+        }
+
+        let error = if identifier.starts_with("http://") || identifier.starts_with("https://") {
+            ERROR_NOT_FOUND
+        } else {
+            ERROR_METHOD_NOT_SUPPORTED
+        };
+
+        (ResolutionMetadata::from_error(error), None, None)
+    }
+
+    async fn dereference(
+        &self,
+        primary_identifier_url: &PrimaryDIDURL,
+        _input_metadata: &DereferencingInputMetadata,
+    ) -> Option<(DereferencingMetadata, Content, ContentMetadata)> {
+        let identifier = primary_identifier_url.to_string();
+
+        if let Some(document) = self.documents.get(&identifier) {
+            return Some((
+                DereferencingMetadata {
+                    content_type: Some(TYPE_DID_LD_JSON.to_string()),
+                    ..Default::default()
+                },
+                Content::DIDDocument(document.clone()),
+                ContentMetadata::default(),
+            ));
+        }
+
+        (identifier.starts_with("http://") || identifier.starts_with("https://")).then(|| {
+            (
+                DereferencingMetadata::from_error(ERROR_NOT_FOUND),
+                Content::Null,
+                ContentMetadata::default(),
+            )
+        })
+    }
+}
+
 /// Compose multiple DID resolvers in series.
 ///
 /// Each underlying DID resolver is tried in series until one supports the

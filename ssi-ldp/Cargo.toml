@@ -26,7 +26,6 @@ aleo = ["ssi-jws/aleo", "ssi-caips/aleo"]
 ## enable LDPs from the Solana Ecosystem
 solana = []
 
-example-http-issuer = []
 test = []
 
 [dependencies]

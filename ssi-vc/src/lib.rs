@@ -1180,7 +1180,8 @@ impl Credential {
         }
         // TODO: error if any unconvertable claims
         // TODO: unify with verify function?
-        let warn_unchecked_issuer = vc.has_non_did_issuer();
+        let check_issuer_authorization = checks.contains(&Check::IssuerAuthorization);
+        let warn_unchecked_issuer = vc.has_non_did_issuer() && !check_issuer_authorization;
 
         let (proofs, matched_jwt) = match vc
             .filter_proofs(options_opt, Some((&header, &claims)), resolver)
@@ -1221,26 +1222,37 @@ impl Credential {
                     .errors
                     .push(format!("Unable to verify signature: {}", err)),
             }
-            if results.checks.contains(&Check::JWS) && warn_unchecked_issuer {
-                results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+            if results.checks.contains(&Check::JWS) {
+                if check_issuer_authorization {
+                    results.checks.push(Check::IssuerAuthorization);
+                } else if warn_unchecked_issuer {
+                    results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+                }
             }
 
             return (Some(vc), results);
         }
         // No JWS verified: try to verify a proof.
         if proofs.is_empty() {
-            return (
-                None,
-                VerificationResult::error("No applicable JWS or proof"),
-            );
+            let error = if check_issuer_authorization {
+                "No JWS or proof authorized by credential issuer"
+            } else {
+                "No applicable JWS or proof"
+            };
+
+            return (None, VerificationResult::error(error));
         }
         results =
             verify_proof_candidates(&vc, vc.proof.as_ref(), proofs, resolver, context_loader).await;
         if checks.contains(&Check::Status) {
             results.append(&mut vc.check_status(resolver, context_loader).await);
         }
-        if results.checks.contains(&Check::Proof) && warn_unchecked_issuer {
-            results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+        if results.checks.contains(&Check::Proof) {
+            if check_issuer_authorization {
+                results.checks.push(Check::IssuerAuthorization);
+            } else if warn_unchecked_issuer {
+                results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+            }
         }
 
         (Some(vc), results)
@@ -1313,37 +1325,42 @@ impl Credential {
         jwt_params: Option<(&Header, &JWTClaims)>,
         resolver: &'a dyn DIDResolver,
     ) -> Result<(Vec<&'a Proof>, bool), String> {
-        // Restrict proofs to the issuer's verification methods only when the
-        // issuer is a DID. URL issuers are valid in the VC data model, but do
-        // not have a DID document from which to derive an allowed VM set.
         let mut options = options.unwrap_or_default();
-        let restrict_allowed_vms = match options.verification_method.take() {
-            Some(vm) => Some(vec![vm.to_string()]),
-            None => {
-                if let Some(issuer) = &self.issuer {
-                    let issuer_id = issuer.get_id();
+        let check_issuer_authorization = options
+            .checks
+            .as_ref()
+            .map(|checks| checks.contains(&Check::IssuerAuthorization))
+            .unwrap_or(false);
+        let requested_vm = options
+            .verification_method
+            .take()
+            .map(|verification_method| verification_method.to_string());
+        let restrict_allowed_vms = if let Some(issuer) = &self.issuer {
+            let issuer_id = issuer.get_id();
+            let resolve_issuer = check_issuer_authorization
+                || (issuer_id.starts_with("did:") && requested_vm.is_none());
 
-                    if issuer_id.starts_with("did:") {
-                        let proof_purpose = options
-                            .proof_purpose
-                            .clone()
-                            .unwrap_or(ProofPurpose::AssertionMethod);
+            if resolve_issuer {
+                let proof_purpose = options
+                    .proof_purpose
+                    .clone()
+                    .unwrap_or(ProofPurpose::AssertionMethod);
+                let mut authorized_vms =
+                    get_verification_methods_for_purpose(&issuer_id, resolver, proof_purpose)
+                        .await?;
 
-                        Some(
-                            get_verification_methods_for_purpose(
-                                &issuer_id,
-                                resolver,
-                                proof_purpose,
-                            )
-                            .await?,
-                        )
-                    } else {
-                        None
-                    }
-                } else {
-                    None
+                if let Some(requested_vm) = requested_vm {
+                    authorized_vms.retain(|authorized_vm| authorized_vm == &requested_vm);
                 }
+
+                Some(authorized_vms)
+            } else {
+                requested_vm.map(|verification_method| vec![verification_method])
             }
+        } else if check_issuer_authorization {
+            return Err("Credential is missing an issuer".to_string());
+        } else {
+            requested_vm.map(|verification_method| vec![verification_method])
         };
         let matched_proofs = self
             .proof
@@ -1378,12 +1395,12 @@ impl Credential {
         resolver: &dyn DIDResolver,
         context_loader: &mut ContextLoader,
     ) -> VerificationResult {
-        let warn_unchecked_issuer = self.has_non_did_issuer();
-
         let checks = options
             .as_ref()
             .and_then(|opts| opts.checks.clone())
             .unwrap_or_default();
+        let check_issuer_authorization = checks.contains(&Check::IssuerAuthorization);
+        let warn_unchecked_issuer = self.has_non_did_issuer() && !check_issuer_authorization;
         let (proofs, _) = match self.filter_proofs(options, None, resolver).await {
             Ok(proofs) => proofs,
             Err(err) => {
@@ -1391,8 +1408,13 @@ impl Credential {
             }
         };
         if proofs.is_empty() {
-            return VerificationResult::error("No applicable proof");
-            // TODO: say why, e.g. expired
+            let error = if check_issuer_authorization {
+                "No proof authorized by credential issuer"
+            } else {
+                "No applicable proof"
+            };
+
+            return VerificationResult::error(error);
         }
         let mut results =
             verify_proof_candidates(self, self.proof.as_ref(), proofs, resolver, context_loader)
@@ -1404,8 +1426,12 @@ impl Credential {
         if checks.contains(&Check::Schema) {
             results.append(&mut self.check_schema(resolver, context_loader).await);
         }
-        if results.checks.contains(&Check::Proof) && warn_unchecked_issuer {
-            results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+        if results.checks.contains(&Check::Proof) {
+            if check_issuer_authorization {
+                results.checks.push(Check::IssuerAuthorization);
+            } else if warn_unchecked_issuer {
+                results.warnings.push(NON_DID_ISSUER_WARNING.to_string());
+            }
         }
 
         results

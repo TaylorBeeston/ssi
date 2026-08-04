@@ -24,8 +24,6 @@ pub enum Error {
     ExpectedMultibaseZ,
     #[error("A verification method MUST NOT contain multiple verification material properties for the same material.")]
     MultipleKeyMaterial,
-    #[error("Unsupported non-DID issuer: {0}")]
-    UnsupportedNonDIDIssuer(String),
     #[error("Missing proof purpose")]
     MissingProofPurpose,
     #[error("Linked Data Proof type not implemented or not enabled by feature")]
