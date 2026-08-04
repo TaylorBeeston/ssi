@@ -110,34 +110,48 @@ impl ProofDependencyGraph {
         Ok(Some(graph))
     }
 
-    fn ordered_dependencies(&self, index: usize) -> Result<Vec<usize>, String> {
+    fn ordered_dependencies(&self, indices: &[usize]) -> Result<Vec<usize>, String> {
         let mut states = vec![0; self.dependencies.len()];
         let mut order = Vec::new();
 
-        self.visit(index, &mut states, &mut order)?;
+        for index in indices {
+            self.visit(*index, &mut states, &mut order)?;
+        }
 
         Ok(order)
     }
 
-    fn visit(&self, index: usize, states: &mut [u8], order: &mut Vec<usize>) -> Result<(), String> {
-        match states[index] {
-            1 => {
-                return Err(format!(
-                    "{PROOF_VERIFICATION_ERROR}: cyclic previousProof dependency"
-                ))
+    fn visit(&self, start: usize, states: &mut [u8], order: &mut Vec<usize>) -> Result<(), String> {
+        let mut stack = vec![(start, 0)];
+
+        while let Some((index, next_dependency)) = stack.last_mut() {
+            if states[*index] == 0 {
+                states[*index] = 1;
+            } else if states[*index] == 2 {
+                stack.pop();
+                continue;
             }
-            2 => return Ok(()),
-            _ => {}
+
+            if *next_dependency < self.dependencies[*index].len() {
+                let dependency = self.dependencies[*index][*next_dependency];
+                *next_dependency += 1;
+
+                match states[dependency] {
+                    0 => stack.push((dependency, 0)),
+                    1 => {
+                        return Err(format!(
+                            "{PROOF_VERIFICATION_ERROR}: cyclic previousProof dependency"
+                        ))
+                    }
+                    2 => {}
+                    _ => unreachable!(),
+                }
+            } else {
+                states[*index] = 2;
+                order.push(*index);
+                stack.pop();
+            }
         }
-
-        states[index] = 1;
-
-        for dependency in &self.dependencies[index] {
-            self.visit(*dependency, states, order)?;
-        }
-
-        states[index] = 2;
-        order.push(index);
 
         Ok(())
     }
@@ -195,9 +209,16 @@ impl ProofChainDocument {
             }
         }
 
+        let contexts = match object.get("@context") {
+            Some(contexts) => {
+                Some(serde_json::to_string(contexts).map_err(|error| error.to_string())?)
+            }
+            None => document.get_contexts().map_err(|error| error.to_string())?,
+        };
+
         Ok(Self {
             value,
-            contexts: document.get_contexts().map_err(|error| error.to_string())?,
+            contexts,
             default_proof_purpose: document.get_default_proof_purpose(),
             issuer: document.get_issuer().map(str::to_string),
         })
@@ -258,23 +279,26 @@ async fn verify_proof_candidates(
         Ok(graph) => graph,
         Err(error) => return VerificationResult::error(&error),
     };
+
     let Some(graph) = graph else {
-        let mut failures = VerificationResult::new();
+        let mut results = VerificationResult::new();
+        let mut succeeded = true;
 
         for proof in candidates {
             let mut result = proof.verify(document, resolver, context_loader).await;
-            let succeeded = result.errors.is_empty();
 
-            if succeeded {
-                result.checks.push(Check::Proof);
-
-                return result;
+            if !result.errors.is_empty() {
+                succeeded = false;
             }
 
-            failures.append(&mut result);
+            results.append(&mut result);
         }
 
-        return failures;
+        if succeeded {
+            results.checks.push(Check::Proof);
+        }
+
+        return results;
     };
 
     let candidate_count = candidates.len();
@@ -293,88 +317,48 @@ async fn verify_proof_candidates(
         ));
     }
 
-    let mut referenced_by_candidate = vec![false; all_proofs.len()];
+    let order = match graph.ordered_dependencies(&candidate_indices) {
+        Ok(order) => order,
+        Err(error) => return VerificationResult::error(&error),
+    };
+    let mut results = VerificationResult::new();
+    let mut succeeded = true;
 
-    for candidate in &candidate_indices {
-        let ancestors = match graph.ordered_dependencies(*candidate) {
-            Ok(ancestors) => ancestors,
-            Err(error) => return VerificationResult::error(&error),
-        };
+    for index in order {
+        let mut result = all_proofs[index]
+            .verify(document, resolver, context_loader)
+            .await;
 
-        for ancestor in ancestors {
-            if ancestor != *candidate && candidate_indices.contains(&ancestor) {
-                referenced_by_candidate[ancestor] = true;
-            }
-        }
-    }
+        // Current implementations sign against a proof-free document. W3C's proof-chain
+        // fixtures commit later proofs to their direct predecessor set, so retry that form
+        // only after standard verification fails.
+        if !result.errors.is_empty() {
+            let predecessors: Vec<&Proof> = graph.dependencies[index]
+                .iter()
+                .map(|proof_index| all_proofs[*proof_index])
+                .collect();
+            let chain_document = match ProofChainDocument::new(document, &predecessors) {
+                Ok(chain_document) => chain_document,
+                Err(error) => return VerificationResult::error(&error),
+            };
 
-    let targets: Vec<usize> = candidate_indices
-        .into_iter()
-        .filter(|index| !referenced_by_candidate[*index])
-        .collect();
-
-    if targets.is_empty() {
-        return VerificationResult::error(&format!(
-            "{PROOF_VERIFICATION_ERROR}: no terminal proof"
-        ));
-    }
-
-    let mut failures = VerificationResult::new();
-
-    for target in targets {
-        let order = match graph.ordered_dependencies(target) {
-            Ok(order) => order,
-            Err(error) => return VerificationResult::error(&error),
-        };
-        let mut candidate_result = VerificationResult::new();
-        let mut succeeded = true;
-
-        for index in order {
-            let mut result = all_proofs[index]
-                .verify(document, resolver, context_loader)
+            result = all_proofs[index]
+                .verify(&chain_document, resolver, context_loader)
                 .await;
-
-            // Current implementations sign against a proof-free document. W3C's proof-chain
-            // fixtures commit later proofs to their predecessor set, so retry that form only
-            // after standard verification fails.
-            if !result.errors.is_empty() {
-                let proof_order = match graph.ordered_dependencies(index) {
-                    Ok(proof_order) => proof_order,
-                    Err(error) => return VerificationResult::error(&error),
-                };
-                let predecessors: Vec<&Proof> = proof_order[..proof_order.len() - 1]
-                    .iter()
-                    .map(|proof_index| all_proofs[*proof_index])
-                    .collect();
-                let chain_document = match ProofChainDocument::new(document, &predecessors) {
-                    Ok(chain_document) => chain_document,
-                    Err(error) => return VerificationResult::error(&error),
-                };
-
-                result = all_proofs[index]
-                    .verify(&chain_document, resolver, context_loader)
-                    .await;
-            }
-            let proof_succeeded = result.errors.is_empty();
-
-            candidate_result.append(&mut result);
-
-            if !proof_succeeded {
-                succeeded = false;
-                break;
-            }
         }
 
-        if succeeded {
-            candidate_result.checks.push(Check::Proof);
-
-            return candidate_result;
+        if !result.errors.is_empty() {
+            succeeded = false;
         }
 
-        failures.append(&mut candidate_result);
+        results.append(&mut result);
     }
 
-    failures
+    if succeeded {
+        results.checks.push(Check::Proof);
+    }
+
+    results
 }
 
 pub const DEFAULT_CONTEXT: &str = "https://www.w3.org/2018/credentials/v1";
@@ -2481,6 +2465,107 @@ pub(crate) mod tests {
 
         assert_eq!(proofs.len(), 1);
         assert!(!matched_jwt);
+    }
+
+    #[test]
+    fn orders_deep_proof_dependencies_without_recursion() {
+        const PROOF_COUNT: usize = 10_000;
+        let mut proofs = Vec::with_capacity(PROOF_COUNT);
+
+        for index in 0..PROOF_COUNT {
+            let mut proof = Proof::new(ProofSuiteType::DataIntegrityProof);
+            proof.id = Some(format!("urn:uuid:proof-{index}"));
+
+            if index > 0 {
+                proof.previous_proof =
+                    Some(OneOrMany::One(format!("urn:uuid:proof-{}", index - 1)));
+            }
+
+            proofs.push(proof);
+        }
+
+        let proof_refs: Vec<&Proof> = proofs.iter().collect();
+        let graph = ProofDependencyGraph::new(&proof_refs).unwrap().unwrap();
+        let order = graph.ordered_dependencies(&[PROOF_COUNT - 1]).unwrap();
+
+        assert_eq!(order.len(), PROOF_COUNT);
+        assert_eq!(order[0], 0);
+        assert_eq!(order[PROOF_COUNT - 1], PROOF_COUNT - 1);
+    }
+
+    #[async_std::test]
+    async fn verifies_depth_three_chain_against_direct_predecessors() {
+        let mut credential = Credential::from_json_unsigned(
+            r#"{
+                "@context": ["https://www.w3.org/ns/credentials/v2"],
+                "type": ["VerifiableCredential"],
+                "issuer": "did:example:bar",
+                "validFrom": "2026-01-01T00:00:00Z",
+                "credentialSubject": { "id": "did:example:subject" }
+            }"#,
+        )
+        .unwrap();
+        let key: JWK = serde_json::from_str(JWK_JSON_BAR).unwrap();
+        let options = LinkedDataProofOptions {
+            type_: Some(ProofSuiteType::DataIntegrityProof),
+            verification_method: Some(URI::String("did:example:bar#key1".to_string())),
+            cryptosuite: Some(
+                ssi_ldp::suites::dataintegrity::DataIntegrityCryptoSuite::EddsaRdfc2022,
+            ),
+            ..Default::default()
+        };
+        let mut context_loader = ContextLoader::default();
+        let mut proofs = Vec::new();
+
+        for index in 0usize..3 {
+            let id = format!("urn:uuid:proof-{index}");
+            let previous_id = index
+                .checked_sub(1)
+                .map(|previous| format!("urn:uuid:proof-{previous}"));
+            let predecessors: Vec<&Proof> = previous_id
+                .as_ref()
+                .map(|_| vec![&proofs[index - 1]])
+                .unwrap_or_default();
+            let chain_document = ProofChainDocument::new(&credential, &predecessors).unwrap();
+            let mut properties = Map::new();
+            properties.insert("id".to_string(), json!(id));
+
+            if let Some(previous_id) = previous_id.as_ref() {
+                properties.insert("previousProof".to_string(), json!(previous_id));
+            }
+
+            let proof = LinkedDataProofs::sign(
+                &chain_document,
+                &options,
+                &DIDExample,
+                &mut context_loader,
+                &key,
+                Some(properties),
+            )
+            .await
+            .unwrap();
+            assert_eq!(proof.id.as_deref(), Some(id.as_str()));
+            assert_eq!(proof.previous_proof, previous_id.map(OneOrMany::One));
+            proofs.push(proof);
+        }
+
+        credential.proof = Some(OneOrMany::Many(proofs));
+        let result = credential
+            .verify(None, &DIDExample, &mut context_loader)
+            .await;
+
+        assert!(result.errors.is_empty(), "{:?}", result.errors);
+
+        let mut substituted = credential;
+        let OneOrMany::Many(proofs) = substituted.proof.as_mut().unwrap() else {
+            unreachable!()
+        };
+        proofs[2].previous_proof = Some(OneOrMany::One("urn:uuid:proof-0".to_string()));
+        let result = substituted
+            .verify(None, &DIDExample, &mut context_loader)
+            .await;
+
+        assert!(!result.errors.is_empty());
     }
 
     #[test]

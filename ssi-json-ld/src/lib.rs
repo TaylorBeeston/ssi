@@ -36,6 +36,7 @@ pub enum ToRdfError<
 }
 
 pub const CREDENTIALS_V1_CONTEXT: Iri = iri!("https://www.w3.org/2018/credentials/v1");
+pub const CREDENTIALS_V1_CONTEXT_NO_WWW: Iri = iri!("https://w3.org/2018/credentials/v1");
 pub const CREDENTIALS_V2_CONTEXT: Iri = iri!("https://www.w3.org/ns/credentials/v2");
 pub const CREDENTIALS_EXAMPLES_V1_CONTEXT: Iri =
     iri!("https://www.w3.org/2018/credentials/examples/v1");
@@ -381,7 +382,9 @@ impl Loader<IriBuf, Span> for StaticLoader {
         async move {
             iri_match! {
                 match url {
-                    CREDENTIALS_V1_CONTEXT => Ok(CREDENTIALS_V1_CONTEXT_DOCUMENT.clone()),
+                    CREDENTIALS_V1_CONTEXT | CREDENTIALS_V1_CONTEXT_NO_WWW => {
+                        Ok(CREDENTIALS_V1_CONTEXT_DOCUMENT.clone())
+                    },
                     CREDENTIALS_V2_CONTEXT => Ok(CREDENTIALS_V2_CONTEXT_DOCUMENT.clone()),
                     CREDENTIALS_EXAMPLES_V1_CONTEXT => {
                         Ok(CREDENTIALS_EXAMPLES_V1_CONTEXT_DOCUMENT.clone())
@@ -613,38 +616,9 @@ pub enum ContextError {
     InvalidContext(#[from] Meta<json_ld::syntax::context::InvalidContext, Span>),
 }
 
-fn unwrap_context_documents(value: &mut serde_json::Value) -> bool {
-    let serde_json::Value::Array(contexts) = value else {
-        return false;
-    };
-    let mut changed = false;
-
-    for context in contexts {
-        let serde_json::Value::Object(object) = context else {
-            continue;
-        };
-
-        if object.len() != 1 || !object.contains_key("@context") {
-            continue;
-        }
-
-        *context = object.remove("@context").unwrap();
-        changed = true;
-    }
-
-    changed
-}
-
 /// Parse a JSON-LD context.
 pub fn parse_ld_context(content: &str) -> Result<RemoteContextReference, ContextError> {
     let json = json_syntax::Value::parse_str(content, |span| span)?;
-    let mut normalized: serde_json::Value =
-        serde_json::from_str(content).expect("json-syntax already validated the input");
-    let json = if unwrap_context_documents(&mut normalized) {
-        json_syntax::to_value_with(normalized, Span::default).unwrap()
-    } else {
-        json
-    };
     let context = json_ld::syntax::context::Value::try_from_json(json)?;
     Ok(RemoteContextReference::Loaded(RemoteContext::new(
         None, None, context,
@@ -808,24 +782,20 @@ mod test {
     }
 
     #[tokio::test]
-    async fn loads_credentials_v1_context_from_static_loader() {
-        // Test that credentials v1 context also works (baseline comparison)
-        let mut cl = ContextLoader::default();
+    async fn loads_credentials_v1_context_aliases_from_static_loader() {
+        for url in [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://w3.org/2018/credentials/v1",
+        ] {
+            let mut cl = ContextLoader::default();
+            let result = cl.load_with(&mut (), IriBuf::new(url).unwrap()).await;
 
-        let result = cl
-            .load_with(
-                &mut (),
-                IriBuf::new("https://www.w3.org/2018/credentials/v1").unwrap(),
-            )
-            .await;
-
-        assert!(
-            result.is_ok(),
-            "Should successfully load credentials v1 context from StaticLoader. Error: {:?}",
-            result.err()
-        );
-
-        let _doc = result.unwrap();
+            assert!(
+                result.is_ok(),
+                "Should successfully load credentials v1 context alias `{url}`. Error: {:?}",
+                result.err()
+            );
+        }
     }
 
     #[tokio::test]
@@ -892,7 +862,7 @@ mod test {
         ];
 
         for input in inputs {
-            let input = syntax::to_value_with(input, Default::default()).unwrap();
+            let input = syntax::to_value_with(input, Span::default).unwrap();
             let error = json_to_dataset(input, &mut ContextLoader::default(), None)
                 .await
                 .unwrap_err();
@@ -902,6 +872,18 @@ mod test {
                 "unexpected error: {error}"
             );
         }
+    }
+
+    #[test]
+    fn rejects_deeply_nested_context_without_panicking() {
+        let depth = 256;
+        let content = format!(
+            r#"{{"@context":{}null{}}}"#,
+            "[".repeat(depth),
+            "]".repeat(depth)
+        );
+
+        assert!(parse_ld_context(&content).is_err());
     }
 
     #[tokio::test]
@@ -915,14 +897,14 @@ mod test {
                 "type": "DataIntegrityProof",
                 "cryptosuite": "eddsa-rdfc-2022"
             }),
-            Default::default(),
+            Span::default,
         )
         .unwrap();
         let dataset = json_to_dataset(input, &mut ContextLoader::default(), None)
             .await
             .unwrap();
 
-        assert!(dataset.iter().any(|quad| {
+        assert!(dataset.quads().any(|quad| {
             matches!(
                 quad.object(),
                 rdf_types::Object::Literal(rdf_types::Literal::TypedString(value, ty))
@@ -942,7 +924,7 @@ mod test {
                 "validFrom": "2023-01-01T00:00:00Z",
                 "credentialSubject": { "id": "did:example:subject" }
             }),
-            Default::default(),
+            Span::default,
         )
         .unwrap();
 

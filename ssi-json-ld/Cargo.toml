@@ -29,3 +29,6 @@ ssi-crypto = { path = "../ssi-crypto", version = "0.1" }
 difference = "2.0"
 nquads-syntax = "0.10.0"
 tokio = { version = "1.27.0", features = ["rt", "macros"] }
+# `to_value_with` lives behind json-syntax's `serde` feature. Enabled for tests only so the
+# feature is not forced on downstream builds.
+json-syntax = { version = "0.9", features = ["serde"] }

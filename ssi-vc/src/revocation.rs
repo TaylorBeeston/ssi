@@ -80,6 +80,7 @@ pub struct BitstringStatusListEntry {
     /// Status purpose.
     pub status_purpose: String,
     /// Index of this credential's status in the status list credential.
+    #[serde(deserialize_with = "deserialize_bitstring_status_list_index")]
     pub status_list_index: RevocationListIndex,
     /// URL to a [BitstringStatusListCredential].
     pub status_list_credential: URL,
@@ -107,6 +108,34 @@ pub struct BitstringStatusMessage {
 #[serde(try_from = "String")]
 #[serde(into = "String")]
 pub struct RevocationListIndex(usize);
+
+/// Deserialize the spec-defined string form and the non-standard unsigned JSON
+/// integer form emitted by some Bitstring Status List implementations.
+///
+/// `RevocationListIndex` still serializes as a string, so credentials produced
+/// by this crate remain spec-compliant. This compatibility behavior is scoped
+/// to `BitstringStatusListEntry`; the older status-list formats retain their
+/// existing string-only decoding.
+fn deserialize_bitstring_status_list_index<'de, D>(
+    deserializer: D,
+) -> Result<RevocationListIndex, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrUnsignedInteger {
+        String(String),
+        Integer(usize),
+    }
+
+    match StringOrUnsignedInteger::deserialize(deserializer)? {
+        StringOrUnsignedInteger::String(value) => {
+            RevocationListIndex::try_from(value).map_err(serde::de::Error::custom)
+        }
+        StringOrUnsignedInteger::Integer(value) => Ok(RevocationListIndex(value)),
+    }
+}
 
 /// Verifiable Credential of type RevocationList2020Credential.
 /// <https://w3c-ccg.github.io/vc-status-rl-2020/#revocationlist2020credential>
@@ -1255,6 +1284,44 @@ impl TryFrom<BitstringStatusListCredential> for Credential {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bitstring_status_list_entry_accepts_nonstandard_numeric_index() {
+        use serde_json::json;
+
+        let entry: BitstringStatusListEntry = serde_json::from_value(json!({
+            "statusPurpose": "revocation",
+            "statusListIndex": 436,
+            "statusListCredential": "https://example.com/status/1"
+        }))
+        .unwrap();
+
+        assert_eq!(entry.status_list_index.0, 436);
+        assert_eq!(
+            serde_json::to_value(entry).unwrap()["statusListIndex"],
+            json!("436")
+        );
+
+        for invalid_index in [json!(-1), json!(1.5)] {
+            let result = serde_json::from_value::<BitstringStatusListEntry>(json!({
+                "statusPurpose": "revocation",
+                "statusListIndex": invalid_index,
+                "statusListCredential": "https://example.com/status/1"
+            }));
+
+            assert!(result.is_err());
+        }
+
+        let legacy_result = serde_json::from_value::<StatusList2021Entry>(json!({
+            "id": "https://example.com/status/1#436",
+            "statusPurpose": "revocation",
+            "statusListIndex": 436,
+            "statusListCredential": "https://example.com/status/1"
+        }));
+
+        assert!(legacy_result.is_err());
+    }
+
     #[test]
     fn default_list() {
         let list = List(vec![0; MIN_BITSTRING_LENGTH / 8]);

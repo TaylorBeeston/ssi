@@ -23,7 +23,10 @@ jobs:
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: "1.66.0"
+        # No crate in this workspace declares `rust-version`, so this was a CI pin rather than a
+        # real MSRV. Transitive deps in the committed lock (e.g. base64ct 1.8) no longer build on
+        # 1.66, and LearnCard already builds this code with stable.
+        toolchain: "stable"
         profile: minimal
         override: true
         components: rustfmt, clippy
@@ -68,7 +71,7 @@ jobs:
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: "1.68.0"
+        toolchain: "stable"
         profile: minimal
         override: true
 
