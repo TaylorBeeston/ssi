@@ -120,8 +120,6 @@ pub enum Error {
     UnsupportedMultipleVMs,
     /// Key type not implemented
     KeyTypeNotImplemented,
-    /// Unsupported non-DID issuer
-    UnsupportedNonDIDIssuer(String),
     /// Curve not implemented
     CurveNotImplemented(String),
     /// JWT key not found
@@ -476,7 +474,6 @@ impl fmt::Display for Error {
             Error::UnsupportedAlgorithm => write!(f, "Unsupported algorithm"),
             Error::UnsupportedCurve => write!(f, "Unsupported curve"),
             Error::UnsupportedMultipleVMs => write!(f, "Unsupported multiple verification methods"),
-            Error::UnsupportedNonDIDIssuer(issuer) => write!(f, "Unsupported non-DID issuer: {}", issuer),
             Error::KeyTypeNotImplemented => write!(f, "Key type not implemented"),
             Error::CurveNotImplemented(curve) => write!(f, "Curve not implemented: '{:?}'", curve),
             Error::TimeError => write!(f, "Unable to convert date/time"),

@@ -6,13 +6,14 @@ use serde::Deserialize;
 use ssi_dids::{
     did_resolve::{
         Content, ContentMetadata, DIDResolver, DereferencingInputMetadata, DereferencingMetadata,
-        DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata, TYPE_DID_LD_JSON,
+        DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata, StaticDocumentResolver,
+        TYPE_DID_LD_JSON,
     },
     Document, PrimaryDIDURL,
 };
 use ssi_json_ld::ContextLoader;
 use ssi_jwk::JWK;
-use ssi_ldp::{dataintegrity::DataIntegrityCryptoSuite, ProofSuiteType};
+use ssi_ldp::{dataintegrity::DataIntegrityCryptoSuite, Check, ProofSuiteType};
 use ssi_vc::{Credential, LinkedDataProofOptions, OneOrMany, ProofPurpose, URI};
 
 #[derive(Deserialize)]
@@ -151,6 +152,10 @@ async fn vc_di_eddsa_ed25519signature2020() {
 
     let unsigned_vc = include_str!("../../tests/vc-di-eddsa/TestVectors/unsigned.json");
     let mut unsigned_vc: Credential = serde_json::from_str(unsigned_vc).unwrap();
+    let resolver = StaticDocumentResolver::new(HashMap::from([(
+        DI_ISSUER.to_string(),
+        Document::from_json(DI_ISSUER_JSON).unwrap(),
+    )]));
     let key: KeyPair = serde_json::from_str(include_str!(
         "../../tests/vc-di-eddsa/TestVectors/keyPair.json"
     ))
@@ -165,7 +170,7 @@ async fn vc_di_eddsa_ed25519signature2020() {
                 verification_method: Some(URI::String("https://vc.example/issuers/5678#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2".into())),
                 ..Default::default()
             },
-            &DiResolver,
+            &resolver,
             &mut ContextLoader::default(),
         )
         .await
@@ -173,9 +178,31 @@ async fn vc_di_eddsa_ed25519signature2020() {
     assert!(proof.proof_value.is_some());
     unsigned_vc.proof = Some(OneOrMany::One(proof));
     let res = unsigned_vc
-        .verify(None, &DiResolver, &mut ContextLoader::default())
+        .verify(None, &resolver, &mut ContextLoader::default())
         .await;
     assert_eq!(res.errors, Vec::<String>::default());
+    assert_eq!(
+        res.warnings,
+        vec![
+            "Issuer authorization was not checked because the credential issuer is not a DID"
+                .to_string()
+        ]
+    );
+
+    let res = unsigned_vc
+        .verify(
+            Some(LinkedDataProofOptions {
+                checks: Some(vec![Check::Proof, Check::IssuerAuthorization]),
+                ..Default::default()
+            }),
+            &resolver,
+            &mut ContextLoader::default(),
+        )
+        .await;
+    assert_eq!(res.errors, Vec::<String>::default());
+    assert!(res.checks.contains(&Check::Proof));
+    assert!(res.checks.contains(&Check::IssuerAuthorization));
+    assert!(res.warnings.is_empty());
 }
 
 struct TestParams {
