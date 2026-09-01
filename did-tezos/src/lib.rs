@@ -52,15 +52,14 @@ impl FromStr for Prefix {
     }
 }
 
-impl ToString for Prefix {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for Prefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
             Prefix::TZ1 => "tz1",
             Prefix::TZ2 => "tz2",
             Prefix::TZ3 => "tz3",
             Prefix::KT1 => "KT1",
-        }
-        .to_string()
+        })
     }
 }
 
@@ -532,7 +531,7 @@ impl DIDTz {
                                 })?
                             }
                             #[allow(unreachable_patterns)]
-                            p => return Err(anyhow!("{} support not enabled.", p.to_string())),
+                            p => return Err(anyhow!("{} support not enabled.", p)),
                         };
                         let (_, patch_) = decode_verify(&jws, &jwk)?;
                         patch(
