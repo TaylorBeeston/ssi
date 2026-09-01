@@ -806,6 +806,21 @@ impl TypedData {
         document: &(dyn LinkedDataDocument + Sync),
         proof: &Proof,
     ) -> Result<Self, TypedDataConstructionJSONError> {
+        Self::from_document_and_options_json_inner(document, proof, true).await
+    }
+
+    pub(crate) async fn from_document_and_options_json_legacy(
+        document: &(dyn LinkedDataDocument + Sync),
+        proof: &Proof,
+    ) -> Result<Self, TypedDataConstructionJSONError> {
+        Self::from_document_and_options_json_inner(document, proof, false).await
+    }
+
+    async fn from_document_and_options_json_inner(
+        document: &(dyn LinkedDataDocument + Sync),
+        proof: &Proof,
+        merge_proof_context: bool,
+    ) -> Result<Self, TypedDataConstructionJSONError> {
         let mut doc_value = document
             .to_value()
             .map_err(|e| TypedDataConstructionJSONError::DocumentToJSON(e.to_string()))?;
@@ -818,17 +833,19 @@ impl TypedData {
             .as_object_mut()
             .ok_or(TypedDataConstructionJSONError::ExpectedProofObject)?;
         proof_obj.remove("proofValue");
-        if let Some(proof_context) = proof_obj.remove("@context") {
-            let document_context = doc_obj
-                .entry("@context")
-                .or_insert_with(|| Value::Array(Vec::new()));
-            if !document_context.is_array() {
-                *document_context = Value::Array(vec![document_context.take()]);
-            }
-            let contexts = document_context.as_array_mut().unwrap();
-            match proof_context {
-                Value::Array(proof_contexts) => contexts.extend(proof_contexts),
-                proof_context => contexts.push(proof_context),
+        if merge_proof_context {
+            if let Some(proof_context) = proof_obj.remove("@context") {
+                let document_context = doc_obj
+                    .entry("@context")
+                    .or_insert_with(|| Value::Array(Vec::new()));
+                if !document_context.is_array() {
+                    *document_context = Value::Array(vec![document_context.take()]);
+                }
+                let contexts = document_context.as_array_mut().unwrap();
+                match proof_context {
+                    Value::Array(proof_contexts) => contexts.extend(proof_contexts),
+                    proof_context => contexts.push(proof_context),
+                }
             }
         }
         let info = proof_obj
