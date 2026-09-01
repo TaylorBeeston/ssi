@@ -9,8 +9,6 @@ use ssi_json_ld::ContextLoader;
 use ssi_ldp::VerificationResult;
 use thiserror::Error;
 
-#[allow(clippy::upper_case_acronyms)]
-
 /// Maximum size of a schema loaded using [`load_schema`].
 pub const MAX_RESPONSE_LENGTH: usize = 2097152; // 2MB
 
@@ -46,7 +44,7 @@ impl CredentialSchema for OneEdTechJsonSchemaValidator2019 {
             _ => return result.with_error(format!("Invalid schema id: {}", self.id)),
         }
 
-        let credential_schema = match load_schema(&self.id.as_str()).await {
+        let credential_schema = match load_schema(self.id.as_str()).await {
             Ok(schema) => schema,
             Err(e) => {
                 return result.with_error(format!("Unable to fetch credential schema: {}", e));

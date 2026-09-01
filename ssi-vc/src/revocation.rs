@@ -385,7 +385,7 @@ impl List {
     /// Get an array of indices in the revocation list for credentials that are revoked.
     pub fn iter_revoked_indexes(
         &self,
-    ) -> Result<bitvec::slice::IterOnes<Lsb0, u8>, ListIterDecodeError> {
+    ) -> Result<bitvec::slice::IterOnes<'_, Lsb0, u8>, ListIterDecodeError> {
         let bitstring = BitSlice::<Lsb0, u8>::from_slice(&self.0[..])?;
         if bitstring.len() < MIN_BITSTRING_LENGTH {
             return Err(ListIterDecodeError::ListTooSmall(
@@ -441,7 +441,7 @@ impl EncodedList {
     ///
     /// Given length must be a multiple of 8.
     pub fn new(bit_len: usize) -> Result<Self, NewEncodedListError> {
-        if bit_len % 8 != 0 {
+        if !bit_len.is_multiple_of(8) {
             return Err(NewEncodedListError::LengthMultiple8(bit_len));
         }
         let byte_len = bit_len / 8;
@@ -456,7 +456,7 @@ impl BitstringStatusListEncodedList {
     ///
     /// Given length must be a multiple of 8.
     pub fn new(bit_len: usize) -> Result<Self, NewEncodedListError> {
-        if bit_len % 8 != 0 {
+        if !bit_len.is_multiple_of(8) {
             return Err(NewEncodedListError::LengthMultiple8(bit_len));
         }
         let byte_len = bit_len / 8;
@@ -539,12 +539,9 @@ impl CredentialStatus for RevocationList2020Status {
     ) -> VerificationResult {
         let mut result = VerificationResult::new();
         // TODO: prefix errors or change return type
-        let issuer_id = match &credential.issuer {
-            Some(issuer) => issuer.get_id().clone(),
-            None => {
-                return result.with_error("Credential is missing issuer".to_string());
-            }
-        };
+        if credential.issuer.is_none() {
+            return result.with_error("Credential is missing issuer".to_string());
+        }
         if !credential
             .context
             .contains_uri(REVOCATION_LIST_2020_V1_CONTEXT.into_str())
@@ -579,13 +576,9 @@ impl CredentialStatus for RevocationList2020Status {
                         .with_error(format!("Unable to fetch revocation list credential: {}", e));
                 }
             };
-        let list_issuer_id = match &revocation_list_credential.issuer {
-            Some(issuer) => issuer.get_id().clone(),
-            None => {
-                return result
-                    .with_error("Revocation list credential is missing issuer".to_string());
-            }
-        };
+        if revocation_list_credential.issuer.is_none() {
+            return result.with_error("Revocation list credential is missing issuer".to_string());
+        }
         /* if issuer_id != list_issuer_id {
             return result.with_error(format!(
                 "Revocation list issuer mismatch. Credential: {}, Revocation list: {}",
@@ -683,12 +676,9 @@ impl CredentialStatus for StatusList2021Entry {
     ) -> VerificationResult {
         let mut result = VerificationResult::new();
         // TODO: prefix errors or change return type
-        let issuer_id = match &credential.issuer {
-            Some(issuer) => issuer.get_id().clone(),
-            None => {
-                return result.with_error("Credential is missing issuer".to_string());
-            }
-        };
+        if credential.issuer.is_none() {
+            return result.with_error("Credential is missing issuer".to_string());
+        }
         if !credential
             .context
             .contains_uri(STATUS_LIST_2021_V1_CONTEXT.into_str())
@@ -722,12 +712,9 @@ impl CredentialStatus for StatusList2021Entry {
                 return result.with_error(format!("Unable to fetch status list credential: {}", e));
             }
         };
-        let list_issuer_id = match &status_list_credential.issuer {
-            Some(issuer) => issuer.get_id().clone(),
-            None => {
-                return result.with_error("Status list credential is missing issuer".to_string());
-            }
-        };
+        if status_list_credential.issuer.is_none() {
+            return result.with_error("Status list credential is missing issuer".to_string());
+        }
         /* if issuer_id != list_issuer_id {
             return result.with_error(format!(
                 "Status list issuer mismatch. Credential: {}, Status list: {}",
