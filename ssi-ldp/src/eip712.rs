@@ -263,7 +263,7 @@ impl From<EIP712Type> for String {
         match type_ {
             EIP712Type::Struct(name) => name,
             _ => {
-                format!("{}", &type_)
+                format!("{}", type_)
             }
         }
     }
@@ -427,7 +427,7 @@ pub fn encode_type(
     let mut referenced_types = HashMap::new();
     gather_referenced_struct_types(struct_type, types, &mut referenced_types)?;
     let mut types: Vec<(&String, &StructType)> = referenced_types.into_iter().collect();
-    types.sort_by(|(name1, _), (name2, _)| name1.cmp(name2));
+    types.sort_by_key(|(name, _)| *name);
     for (name, type_) in types {
         encode_type_single(name, type_, &mut string);
     }
