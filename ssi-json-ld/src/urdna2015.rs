@@ -199,7 +199,7 @@ where
             normalization_state
                 .blank_node_to_quads
                 .entry(blank_node_identifier)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(quad);
         }
     }
@@ -225,7 +225,7 @@ where
             normalization_state
                 .hash_to_blank_nodes
                 .entry(hash)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(identifier);
         }
         // 5.4
@@ -396,7 +396,7 @@ pub fn hash_n_degree_quads(
                     // 3.1.2
                     hash_to_related_blank_nodes
                         .entry(hash)
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push(component);
                 }
             }
