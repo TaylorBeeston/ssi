@@ -32,6 +32,8 @@ pub enum Error {
     HolderBindingVerification(#[from] crate::cacao::Error),
     #[error("Missing issuance date")]
     MissingIssuanceDate,
+    #[error("Missing credential status id")]
+    MissingCredentialStatusId,
     #[error("Missing type VerifiableCredential")]
     MissingTypeVerifiableCredential,
     #[error("Missing type VerifiablePresentation")]
