@@ -87,12 +87,15 @@ fn gpg_pk_to_vm(did: &str, pk: SignedPublicKey) -> Result<(VerificationMethodMap
         }
         res
     };
-    if let Some(user) = pk.details.users.get(0) {
+    if let Some(user) = pk.details.users.first() {
         // Workaround to have the same key multiple times (`Comment`)
         header = format!("{}\nComment: {}", header, user.id.id());
     }
     let headers = BTreeMap::from([("Comment".to_string(), vec![header])]);
-    let armored_pgp = pk.to_armored_string(ArmorOptions { headers: Some(&headers), ..Default::default() })?;
+    let armored_pgp = pk.to_armored_string(ArmorOptions {
+        headers: Some(&headers),
+        ..Default::default()
+    })?;
 
     let vm_map = VerificationMethodMap {
         id: vm_url.to_string(),
