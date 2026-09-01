@@ -1392,12 +1392,12 @@ pub async fn get_verification_methods_for_all(
         for vm in doc
             .verification_method
             .into_iter()
-            .chain(doc.public_key.into_iter())
-            .chain(doc.authentication.into_iter())
-            .chain(doc.assertion_method.into_iter())
-            .chain(doc.key_agreement.into_iter())
-            .chain(doc.capability_invocation.into_iter())
-            .chain(doc.capability_delegation.into_iter())
+            .chain(doc.public_key)
+            .chain(doc.authentication)
+            .chain(doc.assertion_method)
+            .chain(doc.key_agreement)
+            .chain(doc.capability_invocation)
+            .chain(doc.capability_delegation)
             .flatten()
         {
             if let VerificationMethod::Map(mut vmm) = vm {
