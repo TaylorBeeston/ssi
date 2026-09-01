@@ -101,6 +101,34 @@ impl fmt::Display for DataIntegrityCryptoSuite {
 }
 
 impl DataIntegrityProof {
+    async fn legacy_rdfc_jws_payload(
+        cryptosuite: &DataIntegrityCryptoSuite,
+        jwa: &Algorithm,
+        proof: &Proof,
+        document: &(dyn LinkedDataDocument + Sync),
+        context_loader: &mut ContextLoader,
+    ) -> Result<Option<Vec<u8>>, Error> {
+        if !matches!(
+            cryptosuite,
+            DataIntegrityCryptoSuite::Eddsa2022 | DataIntegrityCryptoSuite::Ecdsa2019
+        ) {
+            return Ok(None);
+        }
+
+        let (doc_normalized, sigopts_normalized) =
+            urdna2015_normalize(document, proof, context_loader).await?;
+        let sigopts_normalized =
+            sigopts_normalized.replace("^^<https://w3id.org/security#cryptosuiteString>", "");
+        let payload = match jwa {
+            Algorithm::EdDSA | Algorithm::ES256 => {
+                sha256_normalized(doc_normalized, sigopts_normalized)?
+            }
+            Algorithm::ES384 => sha384_normalized(doc_normalized, sigopts_normalized)?,
+            _ => return Ok(None),
+        };
+        Ok(Some(payload))
+    }
+
     async fn jws_payload(
         cryptosuite: &DataIntegrityCryptoSuite,
         jwa: &Algorithm,
@@ -249,7 +277,28 @@ impl DataIntegrityProof {
         if base != multibase::Base::Base58Btc {
             return Err(Error::ExpectedMultibaseZ);
         }
-        Ok(ssi_jws::verify_bytes_warnable(jwa, &message, &key, &sig)?)
+        match ssi_jws::verify_bytes_warnable(jwa, &message, &key, &sig) {
+            Ok(warnings) => Ok(warnings),
+            Err(original_error) => {
+                let Some(legacy_message) = Self::legacy_rdfc_jws_payload(
+                    cryptosuite,
+                    &jwa,
+                    proof,
+                    document,
+                    context_loader,
+                )
+                .await?
+                else {
+                    return Err(original_error.into());
+                };
+                Ok(ssi_jws::verify_bytes_warnable(
+                    jwa,
+                    &legacy_message,
+                    &key,
+                    &sig,
+                )?)
+            }
+        }
     }
 }
 
