@@ -404,10 +404,7 @@ impl JWK {
                 return Some(Algorithm::AleoTestnet1Signature);
             }
             Params::EC(ec_params) => {
-                let curve = match &ec_params.curve {
-                    Some(curve) => curve,
-                    None => return None,
-                };
+                let curve = ec_params.curve.as_ref()?;
                 match &curve[..] {
                     "secp256k1" => {
                         return Some(Algorithm::ES256K);
