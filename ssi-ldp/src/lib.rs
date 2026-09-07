@@ -477,10 +477,40 @@ async fn to_jws_payload(
     sha256_normalized(doc_normalized, sigopts_normalized)
 }
 
+async fn to_rdfc_jws_payload(
+    document: &(dyn LinkedDataDocument + Sync),
+    proof: &Proof,
+    context_loader: &mut ContextLoader,
+) -> Result<Vec<u8>, Error> {
+    let (doc_normalized, sigopts_normalized) = normalize_with_mode(
+        document,
+        proof,
+        context_loader,
+        ssi_json_ld::rdf::NQuadsMode::Rdfc10,
+    )
+    .await?;
+    sha256_normalized(doc_normalized, sigopts_normalized)
+}
+
 async fn urdna2015_normalize(
     document: &(dyn LinkedDataDocument + Sync),
     proof: &Proof,
     context_loader: &mut ContextLoader,
+) -> Result<(String, String), Error> {
+    normalize_with_mode(
+        document,
+        proof,
+        context_loader,
+        ssi_json_ld::rdf::NQuadsMode::Legacy,
+    )
+    .await
+}
+
+async fn normalize_with_mode(
+    document: &(dyn LinkedDataDocument + Sync),
+    proof: &Proof,
+    context_loader: &mut ContextLoader,
+    mode: ssi_json_ld::rdf::NQuadsMode,
 ) -> Result<(String, String), Error> {
     let sigopts_dataset = proof
         .to_dataset_for_signing(Some(document), context_loader)
@@ -488,9 +518,11 @@ async fn urdna2015_normalize(
     let doc_dataset = document
         .to_dataset_for_signing(None, context_loader)
         .await?;
-    let doc_normalized = urdna2015::normalize(doc_dataset.quads().map(QuadRef::from)).into_nquads();
+    let doc_normalized =
+        urdna2015::normalize_with_mode(doc_dataset.quads().map(QuadRef::from), mode).into_nquads();
     let sigopts_normalized =
-        urdna2015::normalize(sigopts_dataset.quads().map(QuadRef::from)).into_nquads();
+        urdna2015::normalize_with_mode(sigopts_dataset.quads().map(QuadRef::from), mode)
+            .into_nquads();
     Ok((doc_normalized, sigopts_normalized))
 }
 

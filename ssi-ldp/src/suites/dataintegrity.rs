@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use ssi_dids::did_resolve::{resolve_key, DIDResolver};
+use ssi_dids::did_resolve::{resolve_key, resolve_vm, DIDResolver};
 use ssi_json_ld::{
     ContextLoader, CREDENTIALS_V2_CONTEXT, W3ID_DATA_INTEGRITY_V1_CONTEXT,
     W3ID_DATA_INTEGRITY_V2_CONTEXT,
@@ -12,8 +12,8 @@ use std::{collections::HashMap as Map, fmt};
 
 use crate::{
     document_has_context, jcs_normalize, sha256_normalized, sha384_normalized, to_jws_payload,
-    urdna2015_normalize, Error, LinkedDataDocument, LinkedDataProofOptions, Proof,
-    ProofPreparation, ProofSuiteType, SigningInput,
+    to_rdfc_jws_payload, urdna2015_normalize, Error, LinkedDataDocument, LinkedDataProofOptions,
+    Proof, ProofPreparation, ProofSuiteType, SigningInput,
 };
 
 pub struct DataIntegrityProof;
@@ -28,6 +28,8 @@ pub enum DataIntegrityCryptoSuite {
     JcsEddsa2022,
     #[serde(rename = "ecdsa-2019")]
     Ecdsa2019,
+    #[serde(rename = "ecdsa-rdfc-2019")]
+    EcdsaRdfc2019,
     #[serde(rename = "jcs-ecdsa-2019")]
     JcsEcdsa2019,
 }
@@ -40,9 +42,12 @@ impl DataIntegrityCryptoSuite {
                 Self::Eddsa2022,
                 Self::JcsEddsa2022,
             ]),
-            Some(Algorithm::ES256) | Some(Algorithm::ES384) => {
-                Ok(vec![Self::Ecdsa2019, Self::JcsEcdsa2019])
-            }
+            Some(Algorithm::ES256) => Ok(vec![
+                Self::Ecdsa2019,
+                Self::JcsEcdsa2019,
+                Self::EcdsaRdfc2019,
+            ]),
+            Some(Algorithm::ES384) => Ok(vec![Self::Ecdsa2019, Self::JcsEcdsa2019]),
             Some(Algorithm::None) | None => Err(Error::MissingAlgorithm),
             Some(_) => Err(Error::UnsupportedCryptosuite),
         }
@@ -57,6 +62,7 @@ impl TryFrom<&str> for DataIntegrityCryptoSuite {
             "eddsa-2022" => Ok(Self::Eddsa2022),
             "json-eddsa-2022" => Ok(Self::JcsEddsa2022),
             "ecdsa-2019" => Ok(Self::Ecdsa2019),
+            "ecdsa-rdfc-2019" => Ok(Self::EcdsaRdfc2019),
             "jcs-ecdsa-2019" => Ok(Self::JcsEcdsa2019),
             _ => Err(Error::UnsupportedCryptosuite),
         }
@@ -78,6 +84,7 @@ impl From<DataIntegrityCryptoSuite> for String {
             DataIntegrityCryptoSuite::Eddsa2022 => "eddsa-2022".into(),
             DataIntegrityCryptoSuite::JcsEddsa2022 => "json-eddsa-2022".into(),
             DataIntegrityCryptoSuite::Ecdsa2019 => "ecdsa-2019".into(),
+            DataIntegrityCryptoSuite::EcdsaRdfc2019 => "ecdsa-rdfc-2019".into(),
             DataIntegrityCryptoSuite::JcsEcdsa2019 => "jcs-ecdsa-2019".into(),
         }
     }
@@ -101,6 +108,51 @@ impl fmt::Display for DataIntegrityCryptoSuite {
 }
 
 impl DataIntegrityProof {
+    fn validate_final_key(key: &JWK) -> Result<(), Error> {
+        let ssi_jwk::Params::EC(params) = &key.params else {
+            return Err(Error::UnsupportedCurve);
+        };
+        if params.curve.as_deref() != Some("P-256") {
+            return Err(Error::UnsupportedCurve);
+        }
+        if key.get_algorithm() != Some(Algorithm::ES256) {
+            return Err(Error::JWS(ssi_jws::Error::AlgorithmMismatch));
+        }
+        #[cfg(feature = "secp256r1")]
+        {
+            p256::PublicKey::try_from(params)?;
+            Ok(())
+        }
+        #[cfg(not(feature = "secp256r1"))]
+        Err(Error::JWS(ssi_jws::Error::MissingFeatures("secp256r1")))
+    }
+
+    fn final_verification_key(vm: &ssi_dids::VerificationMethodMap) -> Result<JWK, Error> {
+        if vm.type_ == "Multikey" {
+            let encoded = vm
+                .property_set
+                .as_ref()
+                .and_then(|properties| properties.get("publicKeyMultibase"))
+                .and_then(Value::as_str)
+                .ok_or(Error::MissingKey)?;
+            let (base, bytes) = multibase::decode(encoded)?;
+            if base != multibase::Base::Base58Btc {
+                return Err(Error::ExpectedMultibaseZ);
+            }
+            // p256-pub (0x1200), encoded as its canonical unsigned varint.
+            // Check the representation before get_jwk discards it.
+            if !bytes.starts_with(&[0x80, 0x24]) {
+                return Err(ssi_jwk::Error::MultibaseKeyPrefix.into());
+            }
+            if bytes.len() != 35 || !matches!(bytes[2], 0x02 | 0x03) {
+                return Err(ssi_jwk::Error::InvalidKeyLength(bytes.len() - 2).into());
+            }
+        }
+        let key = vm.get_jwk()?;
+        Self::validate_final_key(&key)?;
+        Ok(key)
+    }
+
     async fn legacy_rdfc_jws_payload(
         cryptosuite: &DataIntegrityCryptoSuite,
         jwa: &Algorithm,
@@ -142,6 +194,9 @@ impl DataIntegrityProof {
             | (DataIntegrityCryptoSuite::Ecdsa2019, Algorithm::ES256) => {
                 to_jws_payload(document, proof, context_loader).await?
             }
+            (DataIntegrityCryptoSuite::EcdsaRdfc2019, Algorithm::ES256) => {
+                to_rdfc_jws_payload(document, proof, context_loader).await?
+            }
             (DataIntegrityCryptoSuite::JcsEddsa2022, Algorithm::EdDSA) => {
                 let (doc_normalized, sigopts_normalized) = jcs_normalize(document, proof).await?;
                 sha256_normalized(doc_normalized, sigopts_normalized)?
@@ -177,6 +232,9 @@ impl DataIntegrityProof {
                 .clone(),
             Some(c) => c.clone(),
         };
+        if cryptosuite == DataIntegrityCryptoSuite::EcdsaRdfc2019 {
+            Self::validate_final_key(key)?;
+        }
         let jwa = key.get_algorithm().ok_or(Error::MissingAlgorithm)?;
         if let Some(key_algorithm) = key.algorithm {
             if key_algorithm != jwa {
@@ -187,7 +245,9 @@ impl DataIntegrityProof {
             .with_options(options)
             .with_properties(extra_proof_properties);
         proof.cryptosuite = Some(cryptosuite.clone());
-        if !document_has_context(document, CREDENTIALS_V2_CONTEXT)?
+        if cryptosuite == DataIntegrityCryptoSuite::EcdsaRdfc2019 {
+            proof.created = options.created;
+        } else if !document_has_context(document, CREDENTIALS_V2_CONTEXT)?
             && !document_has_context(document, W3ID_DATA_INTEGRITY_V1_CONTEXT)?
             && !document_has_context(document, W3ID_DATA_INTEGRITY_V2_CONTEXT)?
         {
@@ -257,7 +317,11 @@ impl DataIntegrityProof {
             .verification_method
             .as_ref()
             .ok_or(Error::MissingVerificationMethod)?;
-        let key = resolve_key(verification_method, resolver).await?;
+        let key = if *cryptosuite == DataIntegrityCryptoSuite::EcdsaRdfc2019 {
+            Self::final_verification_key(&resolve_vm(verification_method, resolver).await?)?
+        } else {
+            resolve_key(verification_method, resolver).await?
+        };
         let expected_cryptosuites = DataIntegrityCryptoSuite::pick_from_jwk(&key)?;
         let jwa = key.get_algorithm().ok_or(Error::MissingAlgorithm)?;
         if !expected_cryptosuites.contains(cryptosuite) {
@@ -316,5 +380,209 @@ mod test {
     fn serde_supports_legacy_eddsa_2022() {
         let cryptosuite = DataIntegrityCryptoSuite::try_from("eddsa-2022").unwrap();
         assert_eq!(cryptosuite, DataIntegrityCryptoSuite::Eddsa2022);
+    }
+
+    #[test]
+    fn final_optional_created_respects_cutoffs_for_present_dates() {
+        let cutoff = "2024-01-01T00:00:00Z"
+            .parse::<chrono::DateTime<chrono::Utc>>()
+            .unwrap();
+        let options = LinkedDataProofOptions {
+            created: Some(cutoff),
+            ..Default::default()
+        };
+        let mut proof = Proof::new(ProofSuiteType::DataIntegrityProof).with_options(&options);
+        proof.cryptosuite = Some(DataIntegrityCryptoSuite::EcdsaRdfc2019);
+        assert!(proof.matches_options(&options));
+        proof.created = Some(cutoff + chrono::Duration::seconds(1));
+        assert!(!proof.matches_options(&options));
+        proof.created = None;
+        assert!(proof.matches_options(&options));
+        proof.cryptosuite = Some(DataIntegrityCryptoSuite::Ecdsa2019);
+        assert!(!proof.matches_options(&options));
+        assert!(serde_json::from_value::<Proof>(serde_json::json!({
+            "type": "DataIntegrityProof",
+            "cryptosuite": "ecdsa-rdfc-2019",
+            "created": "not-a-date"
+        }))
+        .is_err());
+    }
+
+    #[cfg(feature = "secp256r1")]
+    mod final_p256 {
+        use super::*;
+        use p256::elliptic_curve::sec1::ToEncodedPoint;
+
+        struct Document(Value);
+
+        #[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
+        #[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
+        impl LinkedDataDocument for Document {
+            fn get_contexts(&self) -> Result<Option<String>, Error> {
+                self.0
+                    .get("@context")
+                    .map(serde_json::to_string)
+                    .transpose()
+                    .map_err(Into::into)
+            }
+
+            fn to_value(&self) -> Result<Value, Error> {
+                Ok(self.0.clone())
+            }
+
+            async fn to_dataset_for_signing(
+                &self,
+                _parent: Option<&(dyn LinkedDataDocument + Sync)>,
+                loader: &mut ContextLoader,
+            ) -> Result<ssi_json_ld::rdf::DataSet, Error> {
+                Ok(ssi_json_ld::json_to_dataset(
+                    json_syntax::to_value_with(self.0.clone(), Default::default).unwrap(),
+                    loader,
+                    None,
+                )
+                .await?)
+            }
+        }
+
+        fn key() -> JWK {
+            serde_json::from_str(include_str!("../../../tests/secp256r1-2021-03-18.json")).unwrap()
+        }
+
+        fn multikey(bytes: &[u8], base: multibase::Base) -> ssi_dids::VerificationMethodMap {
+            serde_json::from_value(serde_json::json!({
+                "id": "did:example:holder#key",
+                "controller": "did:example:holder",
+                "type": "Multikey",
+                "publicKeyMultibase": multibase::encode(base, bytes)
+            }))
+            .unwrap()
+        }
+
+        #[test]
+        fn final_key_requires_p256_and_es256() {
+            let mut key = key();
+            assert!(DataIntegrityProof::validate_final_key(&key).is_ok());
+            key.algorithm = Some(Algorithm::ES384);
+            assert!(matches!(
+                DataIntegrityProof::validate_final_key(&key),
+                Err(Error::JWS(_))
+            ));
+            key.algorithm = Some(Algorithm::ES256);
+            let ssi_jwk::Params::EC(params) = &mut key.params else {
+                unreachable!()
+            };
+            params.curve = Some("P-384".into());
+            assert!(matches!(
+                DataIntegrityProof::validate_final_key(&key),
+                Err(Error::UnsupportedCurve)
+            ));
+        }
+
+        #[test]
+        fn final_multikey_requires_public_codec_base_and_valid_compressed_point() {
+            let key = key().to_public();
+            let ssi_jwk::Params::EC(params) = &key.params else {
+                unreachable!()
+            };
+            let public = p256::PublicKey::try_from(params).unwrap();
+            let mut bytes = vec![0x80, 0x24];
+            bytes.extend_from_slice(public.to_encoded_point(true).as_bytes());
+            assert!(DataIntegrityProof::final_verification_key(&multikey(
+                &bytes,
+                multibase::Base::Base58Btc
+            ))
+            .unwrap()
+            .equals_public(&key));
+            assert!(matches!(
+                DataIntegrityProof::final_verification_key(&multikey(
+                    &bytes,
+                    multibase::Base::Base64Url
+                )),
+                Err(Error::ExpectedMultibaseZ)
+            ));
+            let mut wrong_codec = bytes.clone();
+            wrong_codec[0] = 0x81; // p384-pub, not p256-pub.
+            assert!(DataIntegrityProof::final_verification_key(&multikey(
+                &wrong_codec,
+                multibase::Base::Base58Btc
+            ))
+            .is_err());
+            let mut uncompressed = vec![0x80, 0x24];
+            uncompressed.extend_from_slice(public.to_encoded_point(false).as_bytes());
+            assert!(DataIntegrityProof::final_verification_key(&multikey(
+                &uncompressed,
+                multibase::Base::Base58Btc
+            ))
+            .is_err());
+            assert!(DataIntegrityProof::final_verification_key(&multikey(
+                &bytes[..34],
+                multibase::Base::Base58Btc
+            ))
+            .is_err());
+            bytes[3..].fill(0xff); // An x-coordinate outside the field.
+            assert!(DataIntegrityProof::final_verification_key(&multikey(
+                &bytes,
+                multibase::Base::Base58Btc
+            ))
+            .is_err());
+        }
+
+        #[async_std::test]
+        async fn final_configuration_requires_actual_context_and_cryptosuite_datatype() {
+            let options = LinkedDataProofOptions {
+                cryptosuite: Some(DataIntegrityCryptoSuite::EcdsaRdfc2019),
+                created: None,
+                verification_method: Some(crate::URI::String("did:example:holder#key".into())),
+                ..Default::default()
+            };
+            let key = key();
+            let mut loader = ContextLoader::default();
+            for (value, missing) in [
+                (serde_json::json!({}), true),
+                (serde_json::json!({"@context": null}), false),
+                (serde_json::json!({"@context": 42}), false),
+            ] {
+                let result = DataIntegrityProof::prepare(
+                    &Document(value),
+                    &options,
+                    &mut loader,
+                    &key,
+                    None,
+                )
+                .await;
+                if missing {
+                    assert!(matches!(result, Err(Error::MissingContext)));
+                } else {
+                    assert!(matches!(result, Err(Error::InvalidContext)));
+                }
+            }
+            let mut document = serde_json::json!({
+                "@context": {
+                    "type": "@type",
+                    "DataIntegrityProof": "https://w3id.org/security#DataIntegrityProof",
+                    "proofPurpose": {"@id": "https://w3id.org/security#proofPurpose", "@type": "@vocab"},
+                    "assertionMethod": "https://w3id.org/security#assertionMethod",
+                    "verificationMethod": {"@id": "https://w3id.org/security#verificationMethod", "@type": "@id"},
+                    "cryptosuite": {"@id": "https://w3id.org/security#cryptosuite", "@type": "https://w3id.org/security#cryptosuiteString"}
+                }
+            });
+            let prepared = DataIntegrityProof::prepare(
+                &Document(document.clone()),
+                &options,
+                &mut loader,
+                &key,
+                None,
+            )
+            .await
+            .unwrap();
+            assert_eq!(prepared.proof.created, None);
+            document["@context"]["cryptosuite"]["@type"] =
+                Value::String("http://www.w3.org/2001/XMLSchema#string".into());
+            assert!(matches!(
+                DataIntegrityProof::prepare(&Document(document), &options, &mut loader, &key, None)
+                    .await,
+                Err(Error::InconsistentProof(_))
+            ));
+        }
     }
 }

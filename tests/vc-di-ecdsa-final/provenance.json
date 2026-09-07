@@ -1,0 +1,69 @@
+{
+  "repository": "https://github.com/w3c/vc-di-ecdsa",
+  "revision": "c04ec9684318b558e9e2fe004c372d77d57c0a22",
+  "revisionCorrection": "The supplied plan reference c04ec9684318b558e9e2fed004c372d77d57c0a22 does not exist; the actual upstream commit above removes the extra d.",
+  "licenseMetadata": {
+    "path": "LICENSE.upstream.txt",
+    "upstreamPath": "LICENSE.md",
+    "sha256": "cad8da6404199f732387340029f0f91d55acb98092bf45089064b4a9b8bb0295"
+  },
+  "modifications": "None. All imported upstream files are byte-for-byte copies.",
+  "timestampNote": "The pinned signed P-256 vector includes created=2023-02-24T23:36:38Z. Missing-created behavior is exercised separately by locally generated proofs, not misrepresented as an upstream known-answer signature.",
+  "files": [
+    {
+      "path": "TestVectors/unsigned.json",
+      "upstreamPath": "TestVectors/unsigned.json",
+      "sha256": "060626e6046fc6f39a4aecc55a60b61071ab9aa3f8fd05b8626f8787ec0ff912"
+    },
+    {
+      "path": "TestVectors/p256KeyPair.json",
+      "upstreamPath": "TestVectors/p256KeyPair.json",
+      "sha256": "02ba67288fef7a81beed9c6f060a09d3e648383efe72572499da48ceec8d3ba0"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/signedECDSAP256.json",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/signedECDSAP256.json",
+      "sha256": "30b2092b06f173b6226b86ee0b5b3efd9df77c36d66b8622e2843ddcd8951941"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/proofConfigECDSAP256.json",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/proofConfigECDSAP256.json",
+      "sha256": "6cb1f069b5ddc9b04ec9d8bce8b759be466babd3e4eddf9e291b3d70545d8df2"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/proofCanonECDSAP256.txt",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/proofCanonECDSAP256.txt",
+      "sha256": "3a8a522f689025727fb9d1f0fa99a618da023e8494ac74f51015d009d35abc2e"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/canonDocECDSAP256.txt",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/canonDocECDSAP256.txt",
+      "sha256": "517744132ae165a5349155bef0bb0cf2258fff99dfe1dbd914b938d775a36017"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/proofHashECDSAP256.txt",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/proofHashECDSAP256.txt",
+      "sha256": "fbdb7ee36cc78bc8b8e37009dc7c0d301a91504b21c2586b2575ef6f5777d71a"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/docHashECDSAP256.txt",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/docHashECDSAP256.txt",
+      "sha256": "edc4dd4272a9054dee8c863b189e819ae98a3e0c6b1672f55ebf0e7c19a66cb2"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/combinedHashECDSAP256.txt",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/combinedHashECDSAP256.txt",
+      "sha256": "35b38554e8c9e6f8341a8ab7a94963dc2d493fbf6f5f1262636cad8381215bbd"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/sigBTC58ECDSAP256.txt",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/sigBTC58ECDSAP256.txt",
+      "sha256": "4c1e5b999f96d2bfbae5e14e9b23c7604ff052c10bb4790c16d997a3f81c2dcf"
+    },
+    {
+      "path": "TestVectors/ecdsa-rdfc-2019-p256/sigHexECDSAP256.txt",
+      "upstreamPath": "TestVectors/ecdsa-rdfc-2019-p256/sigHexECDSAP256.txt",
+      "sha256": "5a2ae6019edee85fd9d2680cd46a47babf4b0c75cfde9a36053355054aed44b9"
+    }
+  ]
+}

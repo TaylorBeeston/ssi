@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- LC-2167: support explicit P-256 `ecdsa-rdfc-2019` sign/prepare/verify with final canonical N-Quads, document-context proof configuration, and optional proof timestamps. Existing suite defaults and legacy signature bytes are unchanged; P-384 is not supported by the new suite.
 - [4a2b53a] Add prepare_proof function to Presentation
 - [5f7d1a7] Added impl From<VCDateTime> for chrono::DateTime<Tz>.
 - [4c30f1a] Add anyhow error variant (#410)

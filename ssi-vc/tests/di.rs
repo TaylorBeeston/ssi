@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use did_method_key::DIDKey;
 use rstest::*;
 use serde::Deserialize;
 use ssi_dids::{
@@ -10,9 +11,12 @@ use ssi_dids::{
     },
     Document, PrimaryDIDURL,
 };
-use ssi_json_ld::ContextLoader;
-use ssi_jwk::JWK;
-use ssi_ldp::{dataintegrity::DataIntegrityCryptoSuite, ProofSuiteType};
+use ssi_json_ld::{rdf::NQuadsMode, urdna2015, ContextLoader};
+use ssi_jwk::{Algorithm, JWK};
+use ssi_ldp::{
+    dataintegrity::DataIntegrityCryptoSuite, LinkedDataDocument, Proof, ProofSuite, ProofSuiteType,
+    SigningInput,
+};
 use ssi_vc::{Credential, LinkedDataProofOptions, OneOrMany, ProofPurpose, URI};
 
 #[derive(Deserialize)]
@@ -67,6 +71,9 @@ impl DIDResolver for DiResolver {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
+        if did.starts_with("did:key:") {
+            return DIDKey.resolve(did, _input_metadata).await;
+        }
         if did == DI_ISSUER {
             let doc = Document::from_json(DI_ISSUER_JSON).expect("Could not deserialize document");
             (
@@ -96,6 +103,9 @@ impl DIDResolver for DiResolver {
         did: &str,
         _input_metadata: &ResolutionInputMetadata,
     ) -> (ResolutionMetadata, Vec<u8>, Option<DocumentMetadata>) {
+        if did.starts_with("did:key:") {
+            return DIDKey.resolve_representation(did, _input_metadata).await;
+        }
         if did == DI_ISSUER {
             let vec = DI_ISSUER_JSON.as_bytes().to_vec();
             (
@@ -117,6 +127,9 @@ impl DIDResolver for DiResolver {
         did_url: &PrimaryDIDURL,
         _input_metadata: &DereferencingInputMetadata,
     ) -> Option<(DereferencingMetadata, Content, ContentMetadata)> {
+        if did_url.to_string().starts_with("did:key:") {
+            return DIDKey.dereference(did_url, _input_metadata).await;
+        }
         let doc = Document::from_json(DI_ISSUER_JSON).expect("Could not deserialize document");
         match &did_url.to_string()[..] {
             "https://vc.example/issuers/5678" => Some((
@@ -323,4 +336,211 @@ async fn vc_dataintegrity(#[case] name: String, test_cases: HashMap<String, Test
         .verify(None, &DiResolver, &mut ContextLoader::default())
         .await;
     assert_eq!(res.errors, Vec::<String>::default());
+}
+
+// Final-spec vectors are deliberately separate from the unchanged draft submodules.
+// Upstream revision and byte hashes: tests/vc-di-ecdsa-final/provenance.json.
+const FINAL_UNSIGNED: &str =
+    include_str!("../../tests/vc-di-ecdsa-final/TestVectors/unsigned.json");
+const FINAL_SIGNED: &str = include_str!(
+    "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/signedECDSAP256.json"
+);
+const FINAL_PROOF_CONFIG: &str = include_str!(
+    "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/proofConfigECDSAP256.json"
+);
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FinalKeyPair {
+    public_key_multibase: String,
+    secret_key_multibase: String,
+}
+
+fn final_keypair() -> FinalKeyPair {
+    serde_json::from_str(include_str!(
+        "../../tests/vc-di-ecdsa-final/TestVectors/p256KeyPair.json"
+    ))
+    .unwrap()
+}
+
+fn final_options() -> LinkedDataProofOptions {
+    let proof: Proof = serde_json::from_str(FINAL_PROOF_CONFIG).unwrap();
+    LinkedDataProofOptions {
+        type_: Some(ProofSuiteType::DataIntegrityProof),
+        cryptosuite: Some(DataIntegrityCryptoSuite::EcdsaRdfc2019),
+        verification_method: proof.verification_method.map(URI::String),
+        proof_purpose: proof.proof_purpose,
+        created: proof.created,
+        ..Default::default()
+    }
+}
+
+#[async_std::test]
+async fn vc_di_ecdsa_rdfc_2019_external_signature() {
+    let signed: Credential = serde_json::from_str(FINAL_SIGNED).unwrap();
+    let result = signed
+        .verify(None, &DiResolver, &mut ContextLoader::default())
+        .await;
+    assert!(result.errors.is_empty(), "{:#?}", result);
+
+    // The external signature is raw r || s in Base58btc, not DER or base64url.
+    let proof = signed.proof.as_ref().unwrap().first().unwrap();
+    let (base, signature) = multibase::decode(proof.proof_value.as_ref().unwrap()).unwrap();
+    assert_eq!(base, multibase::Base::Base58Btc);
+    assert_eq!(signature.len(), 64);
+    assert_eq!(
+        hex::encode(signature),
+        include_str!(
+            "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/sigHexECDSAP256.txt"
+        )
+    );
+}
+
+#[async_std::test]
+async fn vc_di_ecdsa_rdfc_2019_known_answer_sign_and_prepare() {
+    let unsigned: Credential = serde_json::from_str(FINAL_UNSIGNED).unwrap();
+    let config: Proof = serde_json::from_str(FINAL_PROOF_CONFIG).unwrap();
+    let pair = final_keypair();
+    let secret = JWK::from_multicodec(&pair.secret_key_multibase).unwrap();
+    let public = JWK::from_multicodec(&pair.public_key_multibase).unwrap();
+    let options = final_options();
+    let mut loader = ContextLoader::default();
+
+    let document_dataset = unsigned
+        .to_dataset_for_signing(None, &mut loader)
+        .await
+        .unwrap();
+    let document_canonical = urdna2015::normalize_with_mode(
+        document_dataset.quads().map(Into::into),
+        NQuadsMode::Rdfc10,
+    )
+    .into_nquads();
+    assert_eq!(
+        document_canonical,
+        include_str!(
+            "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/canonDocECDSAP256.txt"
+        )
+    );
+    let proof_dataset = config
+        .to_dataset_for_signing(Some(&unsigned), &mut loader)
+        .await
+        .unwrap();
+    let proof_canonical =
+        urdna2015::normalize_with_mode(proof_dataset.quads().map(Into::into), NQuadsMode::Rdfc10)
+            .into_nquads();
+    assert_eq!(
+        proof_canonical,
+        include_str!(
+            "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/proofCanonECDSAP256.txt"
+        )
+    );
+
+    let prepared = unsigned
+        .prepare_proof(&public, &options, &DiResolver, &mut loader)
+        .await
+        .unwrap();
+    let message = match &prepared.signing_input {
+        SigningInput::Bytes(bytes) => &bytes.0,
+        _ => panic!("ECDSA RDFC must prepare byte signing input"),
+    };
+    assert_eq!(
+        hex::encode(message),
+        include_str!(
+            "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/combinedHashECDSAP256.txt"
+        )
+    );
+    assert_eq!(
+        hex::encode(&message[..32]),
+        include_str!(
+            "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/proofHashECDSAP256.txt"
+        )
+    );
+    assert_eq!(
+        hex::encode(&message[32..]),
+        include_str!(
+            "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/docHashECDSAP256.txt"
+        )
+    );
+
+    // Completing with the upstream signature proves prepare interoperates independently
+    // of this implementation's signing path.
+    let completed = ProofSuiteType::DataIntegrityProof
+        .complete(
+            &prepared,
+            include_str!(
+                "../../tests/vc-di-ecdsa-final/TestVectors/ecdsa-rdfc-2019-p256/sigBTC58ECDSAP256.txt"
+            ),
+        )
+        .await
+        .unwrap();
+    let mut completed_vc = unsigned.clone();
+    completed_vc.proof = Some(OneOrMany::One(completed));
+    let result = completed_vc.verify(None, &DiResolver, &mut loader).await;
+    assert!(result.errors.is_empty(), "{:#?}", result);
+
+    let generated = unsigned
+        .generate_proof(&secret, &options, &DiResolver, &mut loader)
+        .await
+        .unwrap();
+    let (base, signature) = multibase::decode(generated.proof_value.as_ref().unwrap()).unwrap();
+    assert_eq!(base, multibase::Base::Base58Btc);
+    assert_eq!(signature.len(), 64);
+    // Verify against the external known-answer message, never compare randomized signatures.
+    ssi_jws::verify_bytes(Algorithm::ES256, message, &public, &signature).unwrap();
+    let mut generated_vc = unsigned;
+    generated_vc.proof = Some(OneOrMany::One(generated));
+    let result = generated_vc.verify(None, &DiResolver, &mut loader).await;
+    assert!(result.errors.is_empty(), "{:#?}", result);
+}
+
+#[async_std::test]
+async fn vc_di_ecdsa_rdfc_2019_without_created() {
+    // The pinned upstream vector has created; this deliberately separate roundtrip
+    // exercises the final suite's optional timestamp, including default proof selection.
+    let mut credential: Credential = serde_json::from_str(FINAL_UNSIGNED).unwrap();
+    let secret = JWK::from_multicodec(&final_keypair().secret_key_multibase).unwrap();
+    let mut options = final_options();
+    options.created = None;
+    let mut loader = ContextLoader::default();
+    let proof = credential
+        .generate_proof(&secret, &options, &DiResolver, &mut loader)
+        .await
+        .unwrap();
+    assert!(proof.created.is_none());
+    credential.proof = Some(OneOrMany::One(proof));
+    let result = credential.verify(None, &DiResolver, &mut loader).await;
+    assert!(result.errors.is_empty(), "{:#?}", result);
+    // A cutoff constrains timestamps that exist; it does not make created required.
+    let result = credential
+        .verify(
+            Some(LinkedDataProofOptions {
+                created: Some("2020-01-01T00:00:00Z".parse().unwrap()),
+                ..Default::default()
+            }),
+            &DiResolver,
+            &mut loader,
+        )
+        .await;
+    assert!(result.errors.is_empty(), "{:#?}", result);
+}
+
+#[rstest]
+#[case::document(false)]
+#[case::signature(true)]
+#[async_std::test]
+async fn vc_di_ecdsa_rdfc_2019_rejects_tampering(#[case] alter_signature: bool) {
+    let mut value: serde_json::Value = serde_json::from_str(FINAL_SIGNED).unwrap();
+    if alter_signature {
+        let (base, mut signature) =
+            multibase::decode(value["proof"]["proofValue"].as_str().unwrap()).unwrap();
+        signature[0] ^= 1;
+        value["proof"]["proofValue"] = multibase::encode(base, signature).into();
+    } else {
+        value["credentialSubject"]["alumniOf"] = "A different school".into();
+    }
+    let credential: Credential = serde_json::from_value(value).unwrap();
+    let result = credential
+        .verify(None, &DiResolver, &mut ContextLoader::default())
+        .await;
+    assert!(!result.errors.is_empty(), "Tampered credential verified");
 }

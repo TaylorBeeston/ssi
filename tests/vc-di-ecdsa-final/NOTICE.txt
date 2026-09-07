@@ -1,0 +1,10 @@
+Verifiable Credential Data Integrity ECDSA Cryptosuites — P-256 test vectors
+https://github.com/w3c/vc-di-ecdsa/tree/c04ec9684318b558e9e2fe004c372d77d57c0a22/TestVectors/ecdsa-rdfc-2019-p256
+
+Copyright © 2026 World Wide Web Consortium (Massachusetts Institute of Technology, European Research Consortium for Informatics and Mathematics, Keio University, Beihang). All Rights Reserved.
+
+This work is distributed under the W3C Software and Document License in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+https://www.w3.org/Consortium/Legal/2015/copyright-software-and-document
+
+The upstream files identified in provenance.json are reproduced without modification. LICENSE.upstream.txt preserves the repository's license metadata; LICENSE-W3C.txt includes the referenced W3C license notice. The test harness and provenance metadata are additions, not upstream cryptographic test-vector output.
