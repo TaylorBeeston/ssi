@@ -17,12 +17,12 @@ flate2 = "1.0"
 bitvec = "0.20"
 base64 = "0.12"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-cacaos = { version = "0.5.1" }
+cacaos = { path = "../vendor/cacaos", version = "0.5.1" }
 siwe-recap = { version = "0.1" }
 libipld = { version = "0.14", default-features = false, features = ["dag-cbor", "derive"]}
 multihash = { version = "0.16", default-features = false, features = ["blake3"] }
 iref = "2.2.2"
-boon = "0.5.1"
+boon = "0.6"
 ssi-jwt = { path = "../ssi-jwt", version = "0.1", default-features = false }
 ssi-jws = { path = "../ssi-jws", version = "0.1", default-features = false }
 ssi-jwk = { path = "../ssi-jwk", version = "0.1.1", default-features = false }

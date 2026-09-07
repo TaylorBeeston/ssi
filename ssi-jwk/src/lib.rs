@@ -264,33 +264,20 @@ pub enum Algorithm {
 }
 
 impl JWK {
-    #[cfg(feature = "ring")]
+    #[cfg(any(feature = "ring", feature = "ed25519-dalek"))]
     pub fn generate_ed25519() -> Result<JWK, Error> {
+        let mut seed = zeroize::Zeroizing::new([0u8; 32]);
+        #[cfg(feature = "ring")]
         {
-            let rng = ring::rand::SystemRandom::new();
-            let mut key_pkcs8 = ring::signature::Ed25519KeyPair::generate_pkcs8(&rng)?
-                .as_ref()
-                .to_vec();
-            // reference: ring/src/ec/curve25519/ed25519/signing.rs
-            let private_key = key_pkcs8[0x10..0x30].to_vec();
-            let public_key = key_pkcs8[0x35..0x55].to_vec();
-            key_pkcs8.zeroize();
-            Ok(JWK::from(Params::OKP(OctetParams {
-                curve: "Ed25519".to_string(),
-                public_key: Base64urlUInt(public_key),
-                private_key: Some(Base64urlUInt(private_key)),
-            })))
+            use ring::rand::SecureRandom;
+            ring::rand::SystemRandom::new().fill(seed.as_mut())?;
         }
         #[cfg(not(feature = "ring"))]
         {
-            let mut csprng = rand_old::rngs::OsRng {};
-            let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
-            Ok(JWK::from(Params::OKP(OctetParams {
-                curve: "Ed25519".to_string(),
-                public_key: Base64urlUInt(keypair.public.as_ref().to_vec()),
-                private_key: Some(Base64urlUInt(keypair.secret.as_ref().to_vec())),
-            })))
+            use rand::RngCore;
+            rand::rngs::OsRng.fill_bytes(seed.as_mut());
         }
+        Self::generate_ed25519_from_bytes(seed.as_ref())
     }
 
     #[cfg(feature = "ring")]
@@ -299,40 +286,26 @@ impl JWK {
             return Err(Error::InvalidKeyLength(bytes.len()));
         }
 
-        let rng = ring::test::rand::FixedSliceRandom { bytes };
-        let mut key_pkcs8 = ring::signature::Ed25519KeyPair::generate_pkcs8(&rng)?
-            .as_ref()
-            .to_vec();
-        // reference: ring/src/ec/curve25519/ed25519/signing.rs
-        let private_key = key_pkcs8[0x10..0x30].to_vec();
-        let public_key = key_pkcs8[0x35..0x55].to_vec();
-        key_pkcs8.zeroize();
+        use ring::signature::KeyPair;
+        let key_pair = ring::signature::Ed25519KeyPair::from_seed_unchecked(bytes)?;
         Ok(JWK::from(Params::OKP(OctetParams {
             curve: "Ed25519".to_string(),
-            public_key: Base64urlUInt(public_key),
-            private_key: Some(Base64urlUInt(private_key)),
-        })))
-    }
-
-    #[cfg(all(feature = "ed25519-dalek", not(feature = "ring")))]
-    pub fn generate_ed25519() -> Result<JWK, Error> {
-        let mut csprng = rand_old::rngs::OsRng {};
-        let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
-        Ok(JWK::from(Params::OKP(OctetParams {
-            curve: "Ed25519".to_string(),
-            public_key: Base64urlUInt(keypair.public.as_ref().to_vec()),
-            private_key: Some(Base64urlUInt(keypair.secret.as_ref().to_vec())),
+            public_key: Base64urlUInt(key_pair.public_key().as_ref().to_vec()),
+            private_key: Some(Base64urlUInt(bytes.to_vec())),
         })))
     }
 
     #[cfg(all(feature = "ed25519-dalek", not(feature = "ring")))]
     pub fn generate_ed25519_from_bytes(bytes: &[u8]) -> Result<JWK, Error> {
-        let secret = ed25519_dalek::SecretKey::from_bytes(bytes)?;
-        let public: ed25519_dalek::PublicKey = (&secret).into();
+        let seed = bytes
+            .try_into()
+            .map_err(|_| Error::InvalidKeyLength(bytes.len()))?;
+        let secret = ed25519_dalek::SigningKey::from_bytes(seed);
+        let public = secret.verifying_key();
         Ok(JWK::from(Params::OKP(OctetParams {
             curve: "Ed25519".to_string(),
             public_key: Base64urlUInt(public.as_ref().to_vec()),
-            private_key: Some(Base64urlUInt(secret.as_ref().to_vec())),
+            private_key: Some(Base64urlUInt(bytes.to_vec())),
         })))
     }
 
@@ -834,25 +807,31 @@ impl<'a> TryFrom<&'a RSAParams> for ring::signature::RsaPublicKeyComponents<&'a 
 impl TryFrom<&RSAParams> for ring::signature::RsaKeyPair {
     type Error = Error;
     fn try_from(params: &RSAParams) -> Result<Self, Self::Error> {
-        let der = simple_asn1::der_encode(params)?;
+        let der = zeroize::Zeroizing::new(simple_asn1::der_encode(params)?);
         let keypair = Self::from_der(&der)?;
         Ok(keypair)
     }
 }
 
-#[cfg(feature = "ed25519")]
-impl TryFrom<&OctetParams> for ed25519_dalek::PublicKey {
+#[cfg(feature = "ed25519-dalek")]
+impl TryFrom<&OctetParams> for ed25519_dalek::VerifyingKey {
     type Error = Error;
     fn try_from(params: &OctetParams) -> Result<Self, Self::Error> {
         if params.curve != *"Ed25519" {
             return Err(Error::CurveNotImplemented(params.curve.to_string()));
         }
-        Ok(Self::from_bytes(&params.public_key.0)?)
+        let bytes = params
+            .public_key
+            .0
+            .as_slice()
+            .try_into()
+            .map_err(|_| Error::InvalidKeyLength(params.public_key.0.len()))?;
+        Ok(Self::from_bytes(bytes)?)
     }
 }
 
-#[cfg(feature = "ed25519")]
-impl TryFrom<&OctetParams> for ed25519_dalek::SecretKey {
+#[cfg(feature = "ed25519-dalek")]
+impl TryFrom<&OctetParams> for ed25519_dalek::SigningKey {
     type Error = Error;
     fn try_from(params: &OctetParams) -> Result<Self, Self::Error> {
         if params.curve != *"Ed25519" {
@@ -862,20 +841,16 @@ impl TryFrom<&OctetParams> for ed25519_dalek::SecretKey {
             .private_key
             .as_ref()
             .ok_or(Error::MissingPrivateKey)?;
-        Ok(Self::from_bytes(&private_key.0)?)
-    }
-}
-
-#[cfg(feature = "ed25519")]
-impl TryFrom<&OctetParams> for ed25519_dalek::Keypair {
-    type Error = Error;
-    fn try_from(params: &OctetParams) -> Result<Self, Self::Error> {
-        if params.curve != *"Ed25519" {
-            return Err(Error::CurveNotImplemented(params.curve.to_string()));
+        let seed = private_key
+            .0
+            .as_slice()
+            .try_into()
+            .map_err(|_| Error::InvalidKeyLength(private_key.0.len()))?;
+        let key = Self::from_bytes(seed);
+        if key.verifying_key().as_bytes().as_slice() != params.public_key.0.as_slice() {
+            return Err(Error::InconsistentKey);
         }
-        let public = ed25519_dalek::PublicKey::try_from(params)?;
-        let secret = ed25519_dalek::SecretKey::try_from(params)?;
-        Ok(ed25519_dalek::Keypair { secret, public })
+        Ok(key)
     }
 }
 
@@ -897,19 +872,23 @@ impl TryFrom<&OctetParams> for ring::signature::Ed25519KeyPair {
         if params.curve != *"Ed25519" {
             return Err(Error::CurveNotImplemented(params.curve.to_string()));
         }
-        params
+        let private_key = params
             .private_key
             .as_ref()
             .ok_or(Error::MissingPrivateKey)?;
-        let der = simple_asn1::der_encode(params)?;
-        let keypair = Self::from_pkcs8_maybe_unchecked(&der)?;
-        Ok(keypair)
+        Ok(Self::from_seed_and_public_key(
+            &private_key.0,
+            &params.public_key.0,
+        )?)
     }
 }
 
 #[cfg(feature = "ed25519")]
 pub fn ed25519_parse(data: &[u8]) -> Result<JWK, Error> {
-    let _ = ed25519_dalek::PublicKey::from_bytes(data)?;
+    let bytes = data
+        .try_into()
+        .map_err(|_| Error::InvalidKeyLength(data.len()))?;
+    let _ = ed25519_dalek::VerifyingKey::from_bytes(bytes)?;
     Ok(JWK::from(Params::OKP(OctetParams {
         curve: "Ed25519".to_string(),
         public_key: Base64urlUInt(data.to_owned()),
@@ -919,12 +898,7 @@ pub fn ed25519_parse(data: &[u8]) -> Result<JWK, Error> {
 
 #[cfg(feature = "ed25519")]
 fn ed25519_parse_private(data: &[u8]) -> Result<JWK, Error> {
-    let key = ed25519_dalek::SecretKey::from_bytes(data)?;
-    Ok(JWK::from(Params::OKP(OctetParams {
-        curve: "Ed25519".to_string(),
-        public_key: Base64urlUInt(ed25519_dalek::PublicKey::from(&key).as_bytes().to_vec()),
-        private_key: Some(Base64urlUInt(data.to_owned())),
-    })))
+    JWK::generate_ed25519_from_bytes(data)
 }
 
 #[cfg(feature = "secp256k1")]
@@ -1366,6 +1340,50 @@ mod tests {
     const RSA_PK_DER: &[u8] = include_bytes!("../../tests/rsa2048-2020-08-25-pk.der");
     const ED25519_JSON: &str = include_str!("../../tests/ed25519-2020-10-18.json");
     const ED25519_A32_JSON: &str = include_str!("../../tests/ed25519-a32.json");
+    #[test]
+    #[cfg(any(feature = "ring", feature = "ed25519-dalek"))]
+    fn ed25519_private_conversion_checks_key_material() {
+        let key: JWK = serde_json::from_str(ED25519_A32_JSON).unwrap();
+        let Params::OKP(params) = &key.params else {
+            unreachable!()
+        };
+        #[cfg(feature = "ed25519-dalek")]
+        {
+            let signing_key = ed25519_dalek::SigningKey::try_from(params).unwrap();
+            assert_eq!(
+                signing_key.verifying_key().as_bytes().as_slice(),
+                params.public_key.0
+            );
+        }
+        #[cfg(feature = "ring")]
+        {
+            use ring::signature::KeyPair;
+            let signing_key = ring::signature::Ed25519KeyPair::try_from(params).unwrap();
+            assert_eq!(signing_key.public_key().as_ref(), params.public_key.0);
+        }
+
+        let mut mismatched = params.clone();
+        let other: JWK = serde_json::from_str(ED25519_JSON).unwrap();
+        let Params::OKP(other) = &other.params else {
+            unreachable!()
+        };
+        mismatched.public_key = other.public_key.clone();
+        let mut malformed_seed = params.clone();
+        malformed_seed.private_key.as_mut().unwrap().0.pop();
+        let mut malformed_public = params.clone();
+        malformed_public.public_key.0.pop();
+        for invalid in [
+            &mismatched,
+            &malformed_seed,
+            &malformed_public,
+            &params.to_public(),
+        ] {
+            #[cfg(feature = "ed25519-dalek")]
+            assert!(ed25519_dalek::SigningKey::try_from(invalid).is_err());
+            #[cfg(feature = "ring")]
+            assert!(ring::signature::Ed25519KeyPair::try_from(invalid).is_err());
+        }
+    }
 
     #[test]
     fn jwk_to_from_der_rsa() {
@@ -1388,13 +1406,19 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ed25519")]
+    #[cfg(any(feature = "ring", feature = "ed25519-dalek"))]
     fn generate_ed25519() {
-        let _key = JWK::generate_ed25519().unwrap();
+        let key = JWK::generate_ed25519().unwrap();
+        let Params::OKP(params) = &key.params else {
+            unreachable!()
+        };
+        let seed = &params.private_key.as_ref().unwrap().0;
+        assert_eq!(seed.len(), 32);
+        assert_eq!(JWK::generate_ed25519_from_bytes(seed).unwrap(), key);
     }
 
     #[test]
-    #[cfg(feature = "ed25519")]
+    #[cfg(any(feature = "ring", feature = "ed25519-dalek"))]
     fn generate_ed25519_from_bytes() {
         let a32: JWK = serde_json::from_str(ED25519_A32_JSON).unwrap();
         let byte_string = "a".repeat(32);
@@ -1403,11 +1427,50 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ed25519")]
+    #[cfg(any(feature = "ring", feature = "ed25519-dalek"))]
     fn generate_ed25519_from_bytes_checks_length() {
-        let byte_string = "a".repeat(33);
-        let error = JWK::generate_ed25519_from_bytes(byte_string.as_bytes());
-        assert!(error.is_err());
+        for length in [0, 31, 33, 64] {
+            assert!(matches!(
+                JWK::generate_ed25519_from_bytes(&vec![b'a'; length]),
+                Err(Error::InvalidKeyLength(actual)) if actual == length
+            ));
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ed25519")]
+    fn ed25519_public_parse_checks_length() {
+        assert!(matches!(
+            ed25519_parse(&[0; 31]),
+            Err(Error::InvalidKeyLength(31))
+        ));
+        let expected: JWK = serde_json::from_str(ED25519_A32_JSON).unwrap();
+        let Params::OKP(params) = &expected.params else {
+            unreachable!()
+        };
+        assert_eq!(
+            ed25519_parse(&params.public_key.0).unwrap(),
+            expected.to_public()
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "ring")]
+    fn ed25519_pkcs8_preserves_seed_and_public_key() {
+        use ring::signature::KeyPair;
+        let key: JWK = serde_json::from_str(ED25519_A32_JSON).unwrap();
+        let Params::OKP(params) = &key.params else {
+            unreachable!()
+        };
+        let der = zeroize::Zeroizing::new(simple_asn1::der_encode(&key).unwrap());
+        // The existing RFC 8410 v1 encoding has no optional public key.
+        let parsed = ring::signature::Ed25519KeyPair::from_pkcs8_maybe_unchecked(&der).unwrap();
+        let direct = ring::signature::Ed25519KeyPair::try_from(params).unwrap();
+        assert_eq!(parsed.public_key().as_ref(), params.public_key.0);
+        assert_eq!(
+            parsed.sign(b"PKCS8 compatibility").as_ref(),
+            direct.sign(b"PKCS8 compatibility").as_ref()
+        );
     }
 
     #[test]

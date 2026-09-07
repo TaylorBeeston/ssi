@@ -67,6 +67,7 @@ ssi-zcap-ld = { path = "./ssi-zcap-ld", version = "0.1.2" }
 ssi-caips = { path = "./ssi-caips", version = "0.1", default-features = false }
 
 [workspace]
+exclude = ["vendor/cacaos", "vendor/bbs"]
 members = [
   "did-tezos",
   "did-jwk",

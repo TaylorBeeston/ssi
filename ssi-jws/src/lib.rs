@@ -84,12 +84,12 @@ pub fn sign_bytes(algorithm: Algorithm, data: &[u8], key: &JWK) -> Result<Vec<u8
                     Algorithm::PS256 => &ring::signature::RSA_PSS_SHA256,
                     _ => return Err(Error::AlgorithmNotImplemented),
                 };
-                let mut sig = vec![0u8; key_pair.public_modulus_len()];
+                let mut sig = vec![0u8; key_pair.public().modulus_len()];
                 let rng = ring::rand::SystemRandom::new();
                 key_pair.sign(padding_alg, &rng, data, &mut sig)?;
                 sig
             }
-            #[cfg(feature = "rsa")]
+            #[cfg(all(feature = "rsa", not(feature = "ring")))]
             JWKParams::RSA(rsa_params) => {
                 rsa_params.validate_key_size()?;
                 let private_key = rsa::RsaPrivateKey::try_from(rsa_params)?;
@@ -130,7 +130,7 @@ pub fn sign_bytes(algorithm: Algorithm, data: &[u8], key: &JWK) -> Result<Vec<u8
                 // TODO: SymmetricParams
                 #[cfg(all(feature = "ed25519", not(feature = "ring")))]
                 {
-                    let keypair = ed25519_dalek::Keypair::try_from(okp)?;
+                    let keypair = ed25519_dalek::SigningKey::try_from(okp)?;
                     use ed25519_dalek::Signer;
                     keypair.sign(&hash).to_bytes().to_vec()
                 }
@@ -260,7 +260,7 @@ pub fn verify_bytes_warnable(
             };
             public_key.verify(parameters, data, signature)?
         }
-        #[cfg(feature = "rsa")]
+        #[cfg(all(feature = "rsa", not(feature = "ring")))]
         JWKParams::RSA(rsa_params) => {
             rsa_params.validate_key_size()?;
             let public_key = rsa::RsaPublicKey::try_from(rsa_params)?;
@@ -299,9 +299,10 @@ pub fn verify_bytes_warnable(
             #[cfg(feature = "ed25519")]
             {
                 use ed25519_dalek::Verifier;
-                let public_key = ed25519_dalek::PublicKey::try_from(okp)?;
-                let signature = ed25519_dalek::Signature::from_bytes(signature)
+                let public_key = ed25519_dalek::VerifyingKey::try_from(okp)?;
+                let signature = ed25519_dalek::Signature::from_slice(signature)
                     .map_err(ssi_jwk::Error::from)?;
+                // Retain ordinary verification, not the additional verify_strict policy.
                 public_key
                     .verify(&hash, &signature)
                     .map_err(ssi_jwk::Error::from)?;
@@ -700,6 +701,46 @@ pub fn decode_unverified(jws: &str) -> Result<(Header, Vec<u8>), Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[cfg(any(feature = "ed25519", feature = "ring"))]
+    fn ed25519_rfc8037_sign_verify() {
+        // RFC 8037, Appendix A.1 and A.4: independent deterministic signing fixture.
+        let key: JWK = serde_json::from_value(serde_json::json!({
+            "kty": "OKP",
+            "crv": "Ed25519",
+            "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
+            "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+        }))
+        .unwrap();
+        let input = b"eyJhbGciOiJFZERTQSJ9.RXhhbXBsZSBvZiBFZDI1NTE5IHNpZ25pbmc";
+        let expected = base64::decode_config(
+            "hgyY0il_MGCjP0JzlnLWG1PPOt7-09PGcvMg3AIbQR6dWbhijcNR4ki4iylGjg5BhVsPt9g7sVvpAr_MuM0KAg",
+            base64::URL_SAFE_NO_PAD,
+        ).unwrap();
+        assert_eq!(sign_bytes(Algorithm::EdDSA, input, &key).unwrap(), expected);
+        let public_key = key.to_public();
+        verify_bytes(Algorithm::EdDSA, input, &public_key, &expected).unwrap();
+        assert!(verify_bytes(Algorithm::EdDSA, b"changed", &public_key, &expected).is_err());
+        assert!(verify_bytes(Algorithm::EdDSA, input, &public_key, &expected[..63]).is_err());
+        let mut altered = expected;
+        altered[0] ^= 1;
+        assert!(verify_bytes(Algorithm::EdDSA, input, &public_key, &altered).is_err());
+    }
+
+    #[test]
+    #[cfg(any(feature = "ed25519", feature = "ring"))]
+    fn ed25519_sign_rejects_inconsistent_key() {
+        let mut key = JWK::generate_ed25519_from_bytes(&[b'a'; 32]).unwrap();
+        let other = JWK::generate_ed25519_from_bytes(&[b'b'; 32]).unwrap();
+        let JWKParams::OKP(params) = &mut key.params else {
+            unreachable!()
+        };
+        let JWKParams::OKP(other) = &other.params else {
+            unreachable!()
+        };
+        params.public_key = other.public_key.clone();
+        assert!(sign_bytes(Algorithm::EdDSA, b"message", &key).is_err());
+    }
 
     #[test]
     #[cfg(feature = "rsa")]

@@ -19,9 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [49a0473] Add PlugFest2 context (#494)
 
 ### Changed
+- LC-2160: migrate Ed25519 to dalek 2.2 and ring 0.17, retaining seeded identities and existing verification policy; reject inconsistent public/private keys.
+- LC-2160: remove vulnerable legacy dependency branches through schema/mock upgrades and narrowly vendored CACAO/BBS packages. Vendor manifests record archive checksums, revisions, licenses, and local changes.
+- RSA 0.9.10 does not fix Marvin (RUSTSEC-2023-0071); deployment-specific risk approval remains required.
 - [e9f15ac] Restructure (#457)
 
 ### Fixed
+- LC-2160: use full 32-byte entropy buffers for random BBS key seeds and blinders without changing caller-seeded derivation or proof encodings.
 - [b4993a9] Fix rl2020 context filename in update script
 - [82ebcd0] Fix clear_on_drop for WASM (#451)
 - [d19575d] fix json-ld-normalization remote, repo has moved (#463)
