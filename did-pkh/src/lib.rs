@@ -310,19 +310,14 @@ async fn resolve_solana(did: &str, account_address: String, reference: &str) -> 
 
 async fn resolve_bip122(did: &str, account_address: String, reference: &str) -> ResolutionResult {
     match reference {
-        REFERENCE_BIP122_BITCOIN_MAINNET => {
-            if !account_address.starts_with('1') {
-                return resolution_error(ERROR_INVALID_DID);
-            }
+        REFERENCE_BIP122_BITCOIN_MAINNET if !account_address.starts_with('1') => {
+            return resolution_error(ERROR_INVALID_DID);
         }
-        REFERENCE_BIP122_DOGECOIN_MAINNET => {
-            if !account_address.starts_with('D') {
-                return resolution_error(ERROR_INVALID_DID);
-            }
+        REFERENCE_BIP122_DOGECOIN_MAINNET if !account_address.starts_with('D') => {
+            return resolution_error(ERROR_INVALID_DID);
         }
-        _ => {
-            // Unknown network address: no prefix hash check
-        }
+        // Valid known-network prefix, or unknown network with no prefix check.
+        _ => {}
     }
     let blockchain_account_id = BlockchainAccountId {
         account_address,

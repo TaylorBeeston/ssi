@@ -317,10 +317,8 @@ fn get_public_key_from_doc(doc: &Document, auth_vm_id: &str) -> Option<String> {
         for vm in vms {
             #[allow(clippy::single_match)]
             match vm {
-                VerificationMethod::Map(vmm) => {
-                    if vmm.id == auth_vm_id {
-                        return vmm.public_key_base58.clone();
-                    }
+                VerificationMethod::Map(vmm) if vmm.id == auth_vm_id => {
+                    return vmm.public_key_base58.clone();
                 }
                 // TODO, derefencing
                 _ => {}
