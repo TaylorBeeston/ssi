@@ -3456,7 +3456,7 @@ dependencies = [
  "num-integer",
  "num-iter",
  "num-traits",
- "rand 0.8.5",
+ "rand 0.8.6",
  "serde",
  "smallvec",
  "zeroize",
@@ -3792,7 +3792,7 @@ dependencies = [
  "num-traits",
  "p256 0.13.2",
  "p384 0.13.1",
- "rand 0.8.5",
+ "rand 0.8.6",
  "ripemd",
  "rsa 0.9.8",
  "sha1",
@@ -4071,9 +4071,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
 dependencies = [
  "libc",
  "rand_chacha 0.3.1",
@@ -4860,7 +4860,7 @@ dependencies = [
  "http",
  "iri-string",
  "k256",
- "rand 0.8.5",
+ "rand 0.8.6",
  "sha3",
  "thiserror",
  "time",
@@ -4916,7 +4916,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "once_cell",
- "rand 0.8.5",
+ "rand 0.8.6",
  "rand_chacha 0.3.1",
  "rayon",
  "sha2 0.9.9",
@@ -4936,7 +4936,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83b4de7cd1533c67dd386058b631d7e5ea8b2063ebca212159b13fc1a94ff4a7"
 dependencies = [
  "derivative",
- "rand 0.8.5",
+ "rand 0.8.6",
  "rand_xorshift 0.3.0",
  "rustc_version",
  "serde",
@@ -4974,7 +4974,7 @@ dependencies = [
  "hex",
  "itertools",
  "once_cell",
- "rand 0.8.5",
+ "rand 0.8.6",
  "serde",
  "sha2 0.9.9",
  "snarkvm-algorithms",
@@ -4999,7 +4999,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "derivative",
- "rand 0.8.5",
+ "rand 0.8.6",
  "rand_xorshift 0.3.0",
  "serde",
  "snarkvm-utilities",
@@ -5036,7 +5036,7 @@ dependencies = [
  "derivative",
  "digest 0.9.0",
  "hashbrown 0.11.2",
- "rand 0.8.5",
+ "rand 0.8.6",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
  "rayon",
@@ -5112,7 +5112,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "num-bigint 0.4.6",
- "rand 0.8.5",
+ "rand 0.8.6",
  "snarkvm-derives",
  "thiserror",
 ]
@@ -5351,7 +5351,7 @@ dependencies = [
  "p256 0.11.1",
  "p384 0.11.2",
  "rand 0.7.3",
- "rand 0.8.5",
+ "rand 0.8.6",
  "ring 0.16.20",
  "rsa 0.6.1",
  "serde",
@@ -5379,7 +5379,7 @@ dependencies = [
  "k256",
  "p256 0.11.1",
  "p384 0.11.2",
- "rand 0.8.5",
+ "rand 0.8.6",
  "ring 0.16.20",
  "rsa 0.6.1",
  "serde",
