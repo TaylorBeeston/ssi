@@ -19,9 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [49a0473] Add PlugFest2 context (#494)
 
 ### Changed
+- RDF canonicalization now returns `Result` and enforces default limits of 100,000 candidate permutations and n-degree depth 64. Callers propagate limit errors instead of producing partial output; `normalize_with_limits` and aggregate work statistics support bounded diagnostics.
 - [e9f15ac] Restructure (#457)
 
 ### Fixed
+- Avoid eager and duplicate permutation allocation during URDNA2015 canonicalization, restore candidate pruning, cache first-degree hashes, and index identifier lookups. Correct canonical-identifier handling and blank-node quad indexing to match reference canonical output, including presentation graph containers.
 - [b4993a9] Fix rl2020 context filename in update script
 - [82ebcd0] Fix clear_on_drop for WASM (#451)
 - [d19575d] fix json-ld-normalization remote, repo has moved (#463)
