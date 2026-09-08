@@ -210,6 +210,10 @@ fn hash_first_degree_quads(
 ///
 /// Uses the default limits: 100,000 candidate permutations and n-degree depth 64.
 /// Exhausting either limit returns an error before any canonical output is exposed.
+/// Small, highly symmetric datasets may exceed these limits, including datasets
+/// in previously issued credentials. A limit error is a processing failure, not
+/// evidence that a signature is invalid. Low-level callers that need a different
+/// resource policy can use [`normalize_with_limits`].
 pub fn normalize<'a, Q: IntoIterator<Item = QuadRef<'a>>>(
     quads: Q,
 ) -> Result<NormalizedQuads<'a, Q::IntoIter>, NormalizationError>

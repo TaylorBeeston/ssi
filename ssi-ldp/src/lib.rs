@@ -488,7 +488,8 @@ async fn urdna2015_normalize(
     let doc_dataset = document
         .to_dataset_for_signing(None, context_loader)
         .await?;
-    let doc_normalized = urdna2015::normalize(doc_dataset.quads().map(QuadRef::from))?.into_nquads();
+    let doc_normalized =
+        urdna2015::normalize(doc_dataset.quads().map(QuadRef::from))?.into_nquads();
     let sigopts_normalized =
         urdna2015::normalize(sigopts_dataset.quads().map(QuadRef::from))?.into_nquads();
     Ok((doc_normalized, sigopts_normalized))
