@@ -54,6 +54,8 @@ pub enum Error {
     #[error(transparent)]
     ToRdfError(#[from] Box<ssi_json_ld::ToRdfError>),
     #[error(transparent)]
+    Normalization(#[from] ssi_json_ld::urdna2015::NormalizationError),
+    #[error(transparent)]
     InvalidJsonLdContext(#[from] ssi_json_ld::ContextError),
     #[error("Expected a JSON object")]
     ExpectedJsonObject,

@@ -1,9 +1,43 @@
 use std::collections::BTreeMap as Map;
-use std::collections::HashSet;
 use std::fmt;
 
-#[derive(Debug)]
-pub struct MissingChosenIssuer;
+/// Deterministic limits for ambiguous blank-node canonicalization.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NormalizationLimits {
+    /// Shared candidate-permutation budget for one dataset (default: 100,000).
+    pub max_permutations: usize,
+    /// Maximum n-degree call depth, including the initial call (default: 64).
+    pub max_recursion_depth: usize,
+}
+
+impl Default for NormalizationLimits {
+    fn default() -> Self {
+        Self {
+            max_permutations: 100_000,
+            max_recursion_depth: 64,
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, Clone, Copy, PartialEq, Eq)]
+pub enum NormalizationError {
+    #[error("RDF canonicalization permutation limit exceeded")]
+    WorkLimitExceeded,
+    #[error("RDF canonicalization recursion limit exceeded")]
+    RecursionLimitExceeded,
+    #[error("RDF canonicalization could not choose an identifier issuer")]
+    MissingChosenIssuer,
+}
+
+/// Work performed by a successful normalization.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct NormalizationStats {
+    pub first_degree_hashes: usize,
+    pub n_degree_calls: usize,
+    pub permutations: usize,
+    /// The deepest n-degree call, counting the initial call as depth one.
+    pub max_recursion_depth: usize,
+}
 
 use rdf_types::BlankId;
 use rdf_types::QuadRef;
@@ -94,10 +128,13 @@ impl BlankNodeComponentsMut for Quad {
 
 /// <https://www.w3.org/TR/rdf-canon/#normalization-state>
 #[derive(Debug, Clone)]
-pub struct NormalizationState<'a> {
-    pub blank_node_to_quads: Map<&'a BlankId, Vec<QuadRef<'a>>>,
-    pub hash_to_blank_nodes: Map<String, Vec<&'a BlankId>>,
-    pub canonical_issuer: IdentifierIssuer,
+struct NormalizationState<'a> {
+    blank_node_to_quads: Map<&'a BlankId, Vec<QuadRef<'a>>>,
+    // These hashes depend only on the original, immutable dataset, not on issuers.
+    first_degree_hashes: Map<&'a BlankId, String>,
+    canonical_issuer: IdentifierIssuer,
+    limits: NormalizationLimits,
+    stats: NormalizationStats,
 }
 
 /// <https://www.w3.org/TR/rdf-canon/#dfn-identifier-issuer>  
@@ -106,7 +143,8 @@ pub struct NormalizationState<'a> {
 pub struct IdentifierIssuer {
     pub identifier_prefix: String,
     pub identifier_counter: u64,
-    pub issued_identifiers_list: Vec<(BlankIdBuf, BlankIdBuf)>,
+    issued_identifiers_list: Vec<(BlankIdBuf, BlankIdBuf)>,
+    issued_identifiers_index: Map<BlankIdBuf, usize>,
 }
 
 impl IdentifierIssuer {
@@ -115,14 +153,13 @@ impl IdentifierIssuer {
             identifier_prefix: prefix,
             identifier_counter: 0,
             issued_identifiers_list: Vec::new(),
+            issued_identifiers_index: Map::new(),
         }
     }
     pub fn find_issued_identifier(&self, existing_identifier: &BlankId) -> Option<&BlankId> {
-        // TODO(optimize): index issued_identifiers_list by existing_identifier
-        self.issued_identifiers_list
-            .iter()
-            .find(|(_, existing_id)| existing_id == existing_identifier)
-            .map(|(issued_identifier, _)| issued_identifier.as_ref())
+        self.issued_identifiers_index
+            .get(existing_identifier)
+            .map(|&index| self.issued_identifiers_list[index].0.as_ref())
     }
 }
 
@@ -140,34 +177,26 @@ fn digest_to_lowerhex(digest: &[u8]) -> String {
 }
 
 /// <https://www.w3.org/TR/rdf-canon/#hash-1d-quads>
-pub fn hash_first_degree_quads(
-    normalization_state: &mut NormalizationState,
+fn hash_first_degree_quads(
+    quads: &[QuadRef<'_>],
     reference_blank_node_identifier: &BlankId,
 ) -> String {
     // https://www.w3.org/TR/rdf-canon/#algorithm-1
     // 1
     let mut nquads: Vec<String> = Vec::new();
     // 2
-    if let Some(quads) = normalization_state
-        .blank_node_to_quads
-        .get(reference_blank_node_identifier)
-    {
+    for quad in quads {
         // 3
-        for quad in quads {
-            // 3.1
-            let mut quad: Quad = quad.into_owned();
-            // 3.1.1
-            for label in quad.blank_node_components_mut() {
-                // 3.1.1.1
-                *label = if label == reference_blank_node_identifier {
-                    BlankIdBuf::from_suffix("a").unwrap()
-                } else {
-                    BlankIdBuf::from_suffix("z").unwrap()
-                };
-            }
-            let nquad = NQuadsStatement(&quad).to_string();
-            nquads.push(nquad);
+        let mut quad: Quad = quad.into_owned();
+        for label in quad.blank_node_components_mut() {
+            *label = if label == reference_blank_node_identifier {
+                BlankIdBuf::from_suffix("a").unwrap()
+            } else {
+                BlankIdBuf::from_suffix("z").unwrap()
+            };
         }
+        let nquad = NQuadsStatement(&quad).to_string();
+        nquads.push(nquad);
     }
     // 4
     nquads.sort();
@@ -178,134 +207,123 @@ pub fn hash_first_degree_quads(
 }
 
 /// <https://www.w3.org/TR/rdf-canon/>
+///
+/// Uses the default limits: 100,000 candidate permutations and n-degree depth 64.
+/// Exhausting either limit returns an error before any canonical output is exposed.
+/// Small, highly symmetric datasets may exceed these limits, including datasets
+/// in previously issued credentials. A limit error is a processing failure, not
+/// evidence that a signature is invalid. Low-level callers that need a different
+/// resource policy can use [`normalize_with_limits`].
 pub fn normalize<'a, Q: IntoIterator<Item = QuadRef<'a>>>(
     quads: Q,
-) -> NormalizedQuads<'a, Q::IntoIter>
+) -> Result<NormalizedQuads<'a, Q::IntoIter>, NormalizationError>
 where
     Q::IntoIter: Clone,
 {
-    // https://www.w3.org/TR/rdf-canon/#algorithm
-    // 1
+    normalize_with_limits(quads, NormalizationLimits::default())
+}
+
+/// Canonicalizes a dataset with a shared permutation budget for the entire operation.
+///
+/// Limits bound ambiguous-node search, not JSON-LD expansion or input size.
+/// A limit error must be propagated; it is not permission to sign partial output.
+pub fn normalize_with_limits<'a, Q: IntoIterator<Item = QuadRef<'a>>>(
+    quads: Q,
+    limits: NormalizationLimits,
+) -> Result<NormalizedQuads<'a, Q::IntoIter>, NormalizationError>
+where
+    Q::IntoIter: Clone,
+{
+    let quads = quads.into_iter();
     let mut normalization_state = NormalizationState {
         blank_node_to_quads: Map::new(),
-        hash_to_blank_nodes: Map::new(),
+        first_degree_hashes: Map::new(),
         canonical_issuer: IdentifierIssuer::new("_:c14n".to_string()),
+        limits,
+        stats: NormalizationStats::default(),
     };
-    // 2
-    let quads = quads.into_iter();
     for quad in quads.clone() {
-        // 2.1
-        for blank_node_identifier in quad.blank_node_components() {
+        let mut identifiers = quad.blank_node_components();
+        // A quad belongs to a node's set once, even if the node occupies several positions.
+        identifiers.sort_unstable();
+        identifiers.dedup();
+        for identifier in identifiers {
             normalization_state
                 .blank_node_to_quads
-                .entry(blank_node_identifier)
+                .entry(identifier)
                 .or_insert_with(Vec::new)
                 .push(quad);
         }
     }
-    // 3
-    let mut non_normalized_identifiers: HashSet<&BlankId> = normalization_state
-        .blank_node_to_quads
-        .keys()
-        .cloned()
-        .collect();
-    // 4
-    let mut simple = true;
-    // 5
-    while simple {
-        // 5.1
-        simple = false;
-        // 5.2
-        normalization_state.hash_to_blank_nodes.clear();
-        // 5.3
-        for identifier in non_normalized_identifiers.iter() {
-            // 5.3.1
-            let hash = hash_first_degree_quads(&mut normalization_state, identifier);
-            // 5.3.2
-            normalization_state
-                .hash_to_blank_nodes
-                .entry(hash)
-                .or_insert_with(Vec::new)
-                .push(identifier);
+
+    let mut hash_to_blank_nodes: Map<String, Vec<&BlankId>> = Map::new();
+    for (&identifier, related_quads) in &normalization_state.blank_node_to_quads {
+        let hash = hash_first_degree_quads(related_quads, identifier);
+        normalization_state.stats.first_degree_hashes += 1;
+        normalization_state
+            .first_degree_hashes
+            .insert(identifier, hash.clone());
+        hash_to_blank_nodes
+            .entry(hash)
+            .or_insert_with(Vec::new)
+            .push(identifier);
+    }
+    // First-degree hashes never change when identifiers are issued, so one pass suffices.
+    for identifier_list in hash_to_blank_nodes.values() {
+        if identifier_list.len() == 1 {
+            issue_identifier(
+                &mut normalization_state.canonical_issuer,
+                identifier_list[0],
+            );
         }
-        // 5.4
-        let mut hashes_to_remove = Vec::new();
-        for (hash, identifier_list) in normalization_state.hash_to_blank_nodes.iter() {
-            // 5.4.1
-            if identifier_list.len() > 1 {
+    }
+
+    for identifier_list in hash_to_blank_nodes.values().filter(|ids| ids.len() > 1) {
+        let mut hash_path_list = Vec::new();
+        for &identifier in identifier_list {
+            if normalization_state
+                .canonical_issuer
+                .find_issued_identifier(identifier)
+                .is_some()
+            {
                 continue;
             }
-            // 5.4.2
-            let identifier = match identifier_list.iter().next() {
-                Some(id) => id,
-                None => continue,
-            };
-            // note: canonical issuer is not passed
-            issue_identifier(&mut normalization_state.canonical_issuer, identifier);
-            // 5.4.3
-            non_normalized_identifiers.remove(identifier);
-            // 5.4.4
-            // Cannot remove while iterating
-            hashes_to_remove.push(hash.clone());
-            // 5.4.5
-            simple = true;
+            let mut temporary_issuer = IdentifierIssuer::new("_:b".to_string());
+            issue_identifier(&mut temporary_issuer, identifier);
+            hash_path_list.push(hash_n_degree_quads(
+                &mut normalization_state,
+                identifier,
+                temporary_issuer,
+                1,
+            )?);
         }
-        for hash in hashes_to_remove {
-            normalization_state.hash_to_blank_nodes.remove(&hash);
-        }
-        // 6
-        // Clone normalization_state to avoid mutable borrow
-        for (_hash, identifier_list) in normalization_state.hash_to_blank_nodes.clone() {
-            // 6.1
-            let mut hash_path_list: Vec<HashNDegreeQuadsOutput> = Vec::new();
-            // 6.2
-            for identifier in identifier_list {
-                // 6.2.1
-                if normalization_state
-                    .canonical_issuer
-                    .find_issued_identifier(identifier)
-                    .is_some()
-                {
-                    continue;
-                }
-                // 6.2.2
-                let mut temporary_issuer = IdentifierIssuer::new("_:b".to_string());
-                // 6.2.3
-                issue_identifier(&mut temporary_issuer, identifier);
-                // 6.2.4
-                hash_path_list.push(
-                    hash_n_degree_quads(
-                        &mut normalization_state,
-                        identifier,
-                        &mut temporary_issuer,
-                    )
-                    .unwrap(),
+        hash_path_list.sort_by(|a, b| a.hash.cmp(&b.hash));
+        for result in hash_path_list {
+            for (_, existing_identifier) in result.issuer.issued_identifiers_list {
+                issue_identifier(
+                    &mut normalization_state.canonical_issuer,
+                    &existing_identifier,
                 );
             }
-            // 6.3
-            hash_path_list.sort_by(|a, b| a.hash.cmp(&b.hash));
-            for result in hash_path_list {
-                // 6.3.1
-                let identifier_issuer = result.issuer;
-                for (_, existing_identifier) in identifier_issuer.issued_identifiers_list {
-                    issue_identifier(
-                        &mut normalization_state.canonical_issuer,
-                        &existing_identifier,
-                    );
-                }
-            }
         }
     }
-    // 7
-    NormalizedQuads {
+
+    Ok(NormalizedQuads {
         quads,
         normalization_state,
-    }
+    })
 }
 
 pub struct NormalizedQuads<'a, Q> {
     quads: Q,
     normalization_state: NormalizationState<'a>,
+}
+
+impl<'a, Q> NormalizedQuads<'a, Q> {
+    /// Returns aggregate work counters without exposing document contents.
+    pub fn stats(&self) -> &NormalizationStats {
+        &self.normalization_state.stats
+    }
 }
 
 impl<'a, Q: Iterator<Item = QuadRef<'a>>> NormalizedQuads<'a, Q> {
@@ -352,6 +370,10 @@ pub fn issue_identifier(
     )
     .unwrap();
     // 3
+    identifier_issuer.issued_identifiers_index.insert(
+        existing_identifier.to_owned(),
+        identifier_issuer.issued_identifiers_list.len(),
+    );
     identifier_issuer
         .issued_identifiers_list
         .push((issued_identifier.clone(), existing_identifier.to_owned()));
@@ -361,39 +383,46 @@ pub fn issue_identifier(
     issued_identifier
 }
 
+/// Advances a sorted multiset in place, visiting each distinct permutation once.
+fn next_permutation<T: Ord>(values: &mut [T]) -> bool {
+    let Some(pivot) = (1..values.len()).rev().find(|&i| values[i - 1] < values[i]) else {
+        return false;
+    };
+    let mut successor = values.len() - 1;
+    while values[successor] <= values[pivot - 1] {
+        successor -= 1;
+    }
+    values.swap(pivot - 1, successor);
+    values[pivot..].reverse();
+    true
+}
+
 /// <https://www.w3.org/TR/rdf-canon/#hash-n-degree-quads>
-pub fn hash_n_degree_quads(
-    normalization_state: &mut NormalizationState,
+fn hash_n_degree_quads<'a>(
+    normalization_state: &mut NormalizationState<'a>,
     identifier: &BlankId,
-    issuer: &mut IdentifierIssuer,
-) -> Result<HashNDegreeQuadsOutput, MissingChosenIssuer> {
-    let mut issuer = issuer;
-    // https://www.w3.org/TR/rdf-canon/#algorithm-3
-    let mut issuer_tmp: IdentifierIssuer;
-    // 1
-    let mut hash_to_related_blank_nodes: Map<String, Vec<&BlankId>> = Map::new();
-    // 2
-    if let Some(quads) = normalization_state
-        .blank_node_to_quads
-        .get(identifier)
-        // Clone to prevent multiple mutable borrows of normalization state
-        .cloned()
-    {
-        // 3
-        for quad in quads {
-            // 3.1
+    mut issuer: IdentifierIssuer,
+    depth: usize,
+) -> Result<HashNDegreeQuadsOutput, NormalizationError> {
+    if depth > normalization_state.limits.max_recursion_depth {
+        return Err(NormalizationError::RecursionLimitExceeded);
+    }
+    normalization_state.stats.n_degree_calls += 1;
+    normalization_state.stats.max_recursion_depth =
+        normalization_state.stats.max_recursion_depth.max(depth);
+
+    let mut hash_to_related_blank_nodes: Map<String, Vec<&'a BlankId>> = Map::new();
+    if let Some(quads) = normalization_state.blank_node_to_quads.get(identifier) {
+        for &quad in quads {
             for (component, position) in quad.blank_node_components_with_position() {
-                // Not checking for predicate since that cannot be a blank node identifier anyway
                 if component != identifier {
-                    // 3.1.1
                     let hash = hash_related_blank_node(
                         normalization_state,
                         component,
                         quad,
-                        issuer,
+                        &issuer,
                         position,
                     );
-                    // 3.1.2
                     hash_to_related_blank_nodes
                         .entry(hash)
                         .or_insert_with(Vec::new)
@@ -402,124 +431,93 @@ pub fn hash_n_degree_quads(
             }
         }
     }
-    // 4
+
     let mut data_to_hash = String::new();
-    // 5
-    // Using BTreeMap for sort by hash
-    for (related_hash, blank_node_list) in hash_to_related_blank_nodes {
-        // 5.1
+    for (related_hash, mut blank_node_list) in hash_to_related_blank_nodes {
         data_to_hash.push_str(&related_hash);
-        // 5.2
         let mut chosen_path = String::new();
-        // 5.3
         let mut chosen_issuer = None;
-        // 5.4
-        for permutation in combination::permutate::from_vec(&blank_node_list) {
-            // 5.4.1
+        // Keep repeated occurrences in each candidate, but never enumerate identical candidates.
+        blank_node_list.sort_unstable();
+        let mut first_permutation = true;
+        'permutations: while first_permutation || next_permutation(&mut blank_node_list) {
+            first_permutation = false;
+            if normalization_state.stats.permutations >= normalization_state.limits.max_permutations
+            {
+                return Err(NormalizationError::WorkLimitExceeded);
+            }
+            normalization_state.stats.permutations += 1;
             let mut issuer_copy = issuer.clone();
-            // 5.4.2
             let mut path = String::new();
-            // 5.4.3
-            let mut recursion_list: Vec<BlankIdBuf> = Vec::new();
-            // 5.4.4
-            for related in permutation {
-                // 5.4.4.1
+            let mut recursion_list = Vec::new();
+            for &related in &blank_node_list {
                 if let Some(canonical_identifier) = normalization_state
                     .canonical_issuer
                     .find_issued_identifier(related)
-                    .as_ref()
                 {
-                    recursion_list.push((*canonical_identifier).to_owned());
-                // 5.4.4.2
+                    path.push_str(canonical_identifier.as_str());
                 } else {
-                    // 5.4.4.2.1
                     if issuer_copy.find_issued_identifier(related).is_none() {
-                        recursion_list.push(related.to_owned());
+                        recursion_list.push(related);
                     }
-                    // 5.4.4.2.2
-                    path += &issue_identifier(&mut issuer_copy, related);
+                    path.push_str(&issue_identifier(&mut issuer_copy, related));
                 }
-                // 5.4.4.3
                 if !chosen_path.is_empty() && path.len() >= chosen_path.len() && path > chosen_path
                 {
-                    continue;
+                    continue 'permutations;
                 }
             }
-            // 5.4.5
             for related in recursion_list {
-                // 5.4.5.1
-                let result = hash_n_degree_quads(normalization_state, &related, &mut issuer_copy)?;
-                // 5.4.5.2
-                path.push_str(&issue_identifier(&mut issuer_copy, &related));
-                // 5.4.5.3
+                // Check before descending, also avoiding overflow when forming the next depth.
+                if depth >= normalization_state.limits.max_recursion_depth {
+                    return Err(NormalizationError::RecursionLimitExceeded);
+                }
+                path.push_str(&issue_identifier(&mut issuer_copy, related));
+                let result =
+                    hash_n_degree_quads(normalization_state, related, issuer_copy, depth + 1)?;
                 path.push('<');
                 path.push_str(&result.hash);
                 path.push('>');
-                // 5.4.5.4
                 issuer_copy = result.issuer;
-                // 5.4.5.5
                 if !chosen_path.is_empty() && path.len() >= chosen_path.len() && path > chosen_path
                 {
-                    continue;
+                    continue 'permutations;
                 }
             }
-            // 5.4.6
-            if chosen_path.is_empty() || path < chosen_path {
+            if chosen_issuer.is_none() || path < chosen_path {
                 chosen_path = path;
-                chosen_issuer.replace(issuer_copy);
+                chosen_issuer = Some(issuer_copy);
             }
         }
-        // 5.5
         data_to_hash.push_str(&chosen_path);
-        // 5.6
-        issuer_tmp = match chosen_issuer {
-            Some(issuer) => issuer,
-            None => return Err(MissingChosenIssuer),
-        };
-        issuer = &mut issuer_tmp;
+        issuer = chosen_issuer.ok_or(NormalizationError::MissingChosenIssuer)?;
     }
-    // 6
-    let digest = sha256(data_to_hash.as_bytes());
-    let hash = digest_to_lowerhex(&digest);
-    Ok(HashNDegreeQuadsOutput {
-        hash,
-        issuer: issuer.to_owned(),
-    })
+    let hash = digest_to_lowerhex(&sha256(data_to_hash.as_bytes()));
+    Ok(HashNDegreeQuadsOutput { hash, issuer })
 }
 
 /// <https://www.w3.org/TR/rdf-canon/#hash-related-blank-node>
-pub fn hash_related_blank_node(
-    normalization_state: &mut NormalizationState,
+fn hash_related_blank_node(
+    normalization_state: &NormalizationState,
     related: &BlankId,
     quad: QuadRef,
-    issuer: &mut IdentifierIssuer,
+    issuer: &IdentifierIssuer,
     position: BlankIdPosition,
 ) -> String {
-    // https://www.w3.org/TR/rdf-canon/#algorithm-2
-    // 1
-    let identifier = match normalization_state
+    let identifier = normalization_state
         .canonical_issuer
         .find_issued_identifier(related)
-    {
-        Some(id) => id.to_string(),
-        None => match issuer.find_issued_identifier(related) {
-            Some(id) => id.to_string(),
-            None => hash_first_degree_quads(normalization_state, related),
-        },
-    };
-    // 2
+        .or_else(|| issuer.find_issued_identifier(related))
+        .map(BlankId::as_str)
+        .unwrap_or_else(|| normalization_state.first_degree_hashes[related].as_str());
     let mut input = position.to_string();
-    // 3
     if position != BlankIdPosition::Graph {
         input.push('<');
         input.push_str(quad.predicate().as_str());
         input.push('>');
     }
-    // 4
-    input += &identifier;
-    // 5
-    let digest = sha256(input.as_bytes());
-    digest_to_lowerhex(&digest)
+    input.push_str(identifier);
+    digest_to_lowerhex(&sha256(input.as_bytes()))
 }
 
 #[cfg(test)]
@@ -564,8 +562,9 @@ mod tests {
                 .map(Meta::into_value)
                 .map(Quad::strip_all_but_predicate)
                 .collect();
-            let normalized =
-                normalize(stripped_dataset.iter().map(Quad::as_quad_ref)).into_nquads();
+            let normalized = normalize(stripped_dataset.iter().map(Quad::as_quad_ref))
+                .unwrap()
+                .into_nquads();
             if &normalized == &expected_str {
                 passed += 1;
             } else {

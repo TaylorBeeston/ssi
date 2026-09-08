@@ -1361,11 +1361,11 @@ impl From<Base64urlUInt> for Base64urlUIntString {
 mod tests {
     use super::*;
 
-    const RSA_JSON: &'static str = include_str!("../tests/rsa2048-2020-08-25.json");
-    const RSA_DER: &'static [u8] = include_bytes!("../tests/rsa2048-2020-08-25.der");
-    const RSA_PK_DER: &'static [u8] = include_bytes!("../tests/rsa2048-2020-08-25-pk.der");
-    const ED25519_JSON: &'static str = include_str!("../tests/ed25519-2020-10-18.json");
-    const ED25519_A32_JSON: &'static str = include_str!("../tests/ed25519-a32.json");
+    const RSA_JSON: &'static str = include_str!("../../tests/rsa2048-2020-08-25.json");
+    const RSA_DER: &'static [u8] = include_bytes!("../../tests/rsa2048-2020-08-25.der");
+    const RSA_PK_DER: &'static [u8] = include_bytes!("../../tests/rsa2048-2020-08-25-pk.der");
+    const ED25519_JSON: &'static str = include_str!("../../tests/ed25519-2020-10-18.json");
+    const ED25519_A32_JSON: &'static str = include_str!("../../tests/ed25519-a32.json");
 
     #[test]
     fn jwk_to_from_der_rsa() {

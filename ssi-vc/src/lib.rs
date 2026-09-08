@@ -3209,7 +3209,8 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
             .to_dataset_for_signing(Some(&parent), &mut context_loader)
             .await
             .unwrap();
-        let proof_dataset_normalized = urdna2015::normalize(proof_dataset.quads().map(Into::into));
+        let proof_dataset_normalized =
+            urdna2015::normalize(proof_dataset.quads().map(Into::into)).unwrap();
         let proof_urdna2015 = proof_dataset_normalized.into_nquads();
         eprintln!("proof:\n{}", proof_urdna2015);
         eprintln!("expected:\n{}", urdna2015_expected);
@@ -3245,7 +3246,7 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
             .await
             .unwrap();
         let credential_dataset_normalized =
-            urdna2015::normalize(credential_dataset.quads().map(Into::into));
+            urdna2015::normalize(credential_dataset.quads().map(Into::into)).unwrap();
         let credential_urdna2015 = credential_dataset_normalized.into_nquads();
         eprintln!("credential:\n{}", credential_urdna2015);
         eprintln!("expected:\n{}", urdna2015_expected);
