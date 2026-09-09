@@ -414,6 +414,7 @@ async fn vc_di_ecdsa_rdfc_2019_known_answer_sign_and_prepare() {
         document_dataset.quads().map(Into::into),
         NQuadsMode::Rdfc10,
     )
+    .unwrap()
     .into_nquads();
     assert_eq!(
         document_canonical,
@@ -427,6 +428,7 @@ async fn vc_di_ecdsa_rdfc_2019_known_answer_sign_and_prepare() {
         .unwrap();
     let proof_canonical =
         urdna2015::normalize_with_mode(proof_dataset.quads().map(Into::into), NQuadsMode::Rdfc10)
+            .unwrap()
             .into_nquads();
     assert_eq!(
         proof_canonical,

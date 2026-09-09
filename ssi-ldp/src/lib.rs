@@ -519,9 +519,9 @@ async fn normalize_with_mode(
         .to_dataset_for_signing(None, context_loader)
         .await?;
     let doc_normalized =
-        urdna2015::normalize_with_mode(doc_dataset.quads().map(QuadRef::from), mode).into_nquads();
+        urdna2015::normalize_with_mode(doc_dataset.quads().map(QuadRef::from), mode)?.into_nquads();
     let sigopts_normalized =
-        urdna2015::normalize_with_mode(sigopts_dataset.quads().map(QuadRef::from), mode)
+        urdna2015::normalize_with_mode(sigopts_dataset.quads().map(QuadRef::from), mode)?
             .into_nquads();
     Ok((doc_normalized, sigopts_normalized))
 }
