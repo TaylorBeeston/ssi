@@ -146,7 +146,9 @@ impl Proof {
             if let Some(options_created) = options.created {
                 assert_local!(options_created >= created);
             }
-        } else {
+        } else if self.type_ != ProofSuiteType::DataIntegrityProof
+            || self.cryptosuite != Some(DataIntegrityCryptoSuite::EcdsaRdfc2019)
+        {
             return false;
         }
         if let Some(ref challenge) = options.challenge {
@@ -210,14 +212,35 @@ impl LinkedDataDocument for Proof {
         let mut copy = self.clone();
         copy.jws = None;
         copy.proof_value = None;
-        let json = json_syntax::to_value_with(copy, Default::default).unwrap();
-        let dataset = json_to_dataset(
-            json,
-            context_loader,
+        // The final suite hashes the proof configuration with the unsecured
+        // document's actual context, not an injected suite context.
+        let parent_context = if self.type_ == ProofSuiteType::DataIntegrityProof
+            && self.cryptosuite == Some(DataIntegrityCryptoSuite::EcdsaRdfc2019)
+        {
+            let document = parent.ok_or(Error::MissingContext)?.to_value()?;
+            let context = document
+                .as_object()
+                .ok_or(Error::ExpectedJsonObject)?
+                .get("@context")
+                .ok_or(Error::MissingContext)?;
+            if context.is_null() {
+                return Err(Error::InvalidContext);
+            }
+            parse_ld_context(&serde_json::to_string(context)?)
+                .map_err(|_| Error::InvalidContext)?;
+            copy.context = context.clone();
+            None
+        } else {
             parent
                 .map(LinkedDataDocument::get_contexts)
                 .transpose()?
                 .flatten()
+        };
+        let json = json_syntax::to_value_with(copy, Default::default).unwrap();
+        let dataset = json_to_dataset(
+            json,
+            context_loader,
+            parent_context
                 .as_deref()
                 .map(parse_ld_context)
                 .transpose()?,
@@ -252,7 +275,12 @@ pub struct LinkedDataProofOptions {
     /// The purpose of the proof. If omitted "assertionMethod" will be used.
     pub proof_purpose: Option<ProofPurpose>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    /// The date of the proof. If omitted system time will be used.
+    /// The date used when creating a proof; omitted dates use system time
+    /// except for explicit `ecdsa-rdfc-2019`, where `None` omits `created`.
+    /// During verification this is an inclusive upper bound on a proof's
+    /// timestamp. Final `ecdsa-rdfc-2019` proofs may omit the timestamp even
+    /// when this cutoff is set; other suites require a timestamp. The default
+    /// cutoff is the system time at which these options are constructed.
     pub created: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     /// The challenge of the proof.
@@ -469,15 +497,33 @@ fn verify_proof_consistency(
             .and_then(|cap| cap.as_str()),
     )?;
 
-    graph_ref.take_object_and_assert_eq_iri_or_str(
-        proof_id,
-        iri!("https://w3id.org/security#cryptosuite"),
-        proof
-            .cryptosuite
-            .clone()
-            .map(|cc| cc.to_string())
-            .as_deref(),
-    )?;
+    if proof.type_ == ProofSuiteType::DataIntegrityProof
+        && proof.cryptosuite == Some(DataIntegrityCryptoSuite::EcdsaRdfc2019)
+    {
+        graph_ref.take_object_and_assert_eq(
+            proof_id,
+            iri!("https://w3id.org/security#cryptosuite"),
+            Some("ecdsa-rdfc-2019"),
+            |object, expected| {
+                matches!(
+                    object,
+                    rdf_types::Object::Literal(rdf_types::Literal::TypedString(value, datatype))
+                        if value.as_str() == *expected
+                            && *datatype == iri!("https://w3id.org/security#cryptosuiteString")
+                )
+            },
+        )?;
+    } else {
+        graph_ref.take_object_and_assert_eq_iri_or_str(
+            proof_id,
+            iri!("https://w3id.org/security#cryptosuite"),
+            proof
+                .cryptosuite
+                .clone()
+                .map(|cc| cc.to_string())
+                .as_deref(),
+        )?;
+    }
     graph_ref.take_objects_and_assert_eq_iris(
         proof_id,
         iri!("https://w3id.org/security#previousProof"),

@@ -5801,6 +5801,7 @@ dependencies = [
  "boon",
  "cacaos",
  "chrono",
+ "did-method-key",
  "flate2",
  "hex",
  "iref",

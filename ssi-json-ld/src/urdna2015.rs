@@ -45,8 +45,7 @@ use rdf_types::{BlankIdBuf, Quad};
 
 use ssi_crypto::hashes::sha256::sha256;
 
-use crate::rdf::IntoNQuads;
-use crate::rdf::NQuadsStatement;
+use crate::rdf::{IntoNQuads, NQuadsMode, NQuadsStatementWithMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BlankIdPosition {
@@ -135,6 +134,7 @@ struct NormalizationState<'a> {
     canonical_issuer: IdentifierIssuer,
     limits: NormalizationLimits,
     stats: NormalizationStats,
+    nquads_mode: NQuadsMode,
 }
 
 /// <https://www.w3.org/TR/rdf-canon/#dfn-identifier-issuer>  
@@ -180,6 +180,7 @@ fn digest_to_lowerhex(digest: &[u8]) -> String {
 fn hash_first_degree_quads(
     quads: &[QuadRef<'_>],
     reference_blank_node_identifier: &BlankId,
+    mode: NQuadsMode,
 ) -> String {
     // https://www.w3.org/TR/rdf-canon/#algorithm-1
     // 1
@@ -195,7 +196,7 @@ fn hash_first_degree_quads(
                 BlankIdBuf::from_suffix("z").unwrap()
             };
         }
-        let nquad = NQuadsStatement(&quad).to_string();
+        let nquad = NQuadsStatementWithMode(&quad, mode).to_string();
         nquads.push(nquad);
     }
     // 4
@@ -223,6 +224,18 @@ where
     normalize_with_limits(quads, NormalizationLimits::default())
 }
 
+/// Normalize using one serialization mode for first-degree hashes and output.
+/// The default work and recursion limits apply to either mode.
+pub fn normalize_with_mode<'a, Q: IntoIterator<Item = QuadRef<'a>>>(
+    quads: Q,
+    mode: NQuadsMode,
+) -> Result<NormalizedQuads<'a, Q::IntoIter>, NormalizationError>
+where
+    Q::IntoIter: Clone,
+{
+    normalize_with_mode_and_limits(quads, mode, NormalizationLimits::default())
+}
+
 /// Canonicalizes a dataset with a shared permutation budget for the entire operation.
 ///
 /// Limits bound ambiguous-node search, not JSON-LD expansion or input size.
@@ -234,11 +247,23 @@ pub fn normalize_with_limits<'a, Q: IntoIterator<Item = QuadRef<'a>>>(
 where
     Q::IntoIter: Clone,
 {
+    normalize_with_mode_and_limits(quads, NQuadsMode::Legacy, limits)
+}
+
+fn normalize_with_mode_and_limits<'a, Q: IntoIterator<Item = QuadRef<'a>>>(
+    quads: Q,
+    mode: NQuadsMode,
+    limits: NormalizationLimits,
+) -> Result<NormalizedQuads<'a, Q::IntoIter>, NormalizationError>
+where
+    Q::IntoIter: Clone,
+{
     let quads = quads.into_iter();
     let mut normalization_state = NormalizationState {
         blank_node_to_quads: Map::new(),
         first_degree_hashes: Map::new(),
         canonical_issuer: IdentifierIssuer::new("_:c14n".to_string()),
+        nquads_mode: mode,
         limits,
         stats: NormalizationStats::default(),
     };
@@ -258,7 +283,7 @@ where
 
     let mut hash_to_blank_nodes: Map<String, Vec<&BlankId>> = Map::new();
     for (&identifier, related_quads) in &normalization_state.blank_node_to_quads {
-        let hash = hash_first_degree_quads(related_quads, identifier);
+        let hash = hash_first_degree_quads(related_quads, identifier, mode);
         normalization_state.stats.first_degree_hashes += 1;
         normalization_state
             .first_degree_hashes
@@ -328,7 +353,8 @@ impl<'a, Q> NormalizedQuads<'a, Q> {
 
 impl<'a, Q: Iterator<Item = QuadRef<'a>>> NormalizedQuads<'a, Q> {
     pub fn into_nquads(self) -> String {
-        IntoNQuads::into_nquads(self)
+        let mode = self.normalization_state.nquads_mode;
+        IntoNQuads::into_nquads_with_mode(self, mode)
     }
 }
 
@@ -526,6 +552,166 @@ mod tests {
     use nquads_syntax::Parse;
 
     use super::*;
+
+    fn literal_quad(id: &str, value: &str) -> Quad {
+        Quad(
+            rdf_types::Subject::Blank(BlankIdBuf::from_suffix(id).unwrap()),
+            iref::IriBuf::new("urn:p").unwrap(),
+            rdf_types::Object::Literal(rdf_types::Literal::String(value.to_string().into())),
+            None,
+        )
+    }
+
+    #[test]
+    fn rdfc_normalization_hashes_canonical_literal_escapes() {
+        let quads = [
+            literal_quad("control", "\u{1f}"),
+            literal_quad("text", "plain"),
+        ];
+        // SHA-256 of the first-degree lines with _:a:
+        // escaped control: 4dfd27725af85be65e0177b549d1caf4dfeec44ca602bdf49e312a147033f3dc
+        // plain:           b86ab59dbbb25e47563d26343cf110fa3a720281828f47f5fb8dc088df4c23f5
+        // raw control:     fc3e9adff6e220c3b4d5873a792a337f33ec930ef0ed1cac0df6116e536930b3
+        // Thus escaping only final output would give the wrong canonical labels.
+        let normalized =
+            normalize_with_mode(quads.iter().map(Quad::as_quad_ref), NQuadsMode::Rdfc10)
+                .unwrap()
+                .into_nquads();
+        assert_eq!(
+            normalized,
+            concat!(
+                "_:c14n0 <urn:p> \"\\u001F\" .\n",
+                "_:c14n1 <urn:p> \"plain\" .\n"
+            )
+        );
+    }
+
+    #[test]
+    fn rdfc_normalization_propagates_ambiguous_node_limits() {
+        let input = include_str!("../../json-ld-normalization/tests/test023-in.nq");
+        let quads: Vec<_> = nquads_syntax::Document::parse_str(input, |span| span)
+            .unwrap()
+            .into_value()
+            .into_iter()
+            .map(Meta::into_value)
+            .map(Quad::strip_all_but_predicate)
+            .collect();
+        let work_limited = normalize_with_mode_and_limits(
+            quads.iter().map(Quad::as_quad_ref),
+            NQuadsMode::Rdfc10,
+            NormalizationLimits {
+                max_permutations: 0,
+                ..NormalizationLimits::default()
+            },
+        );
+        assert!(matches!(
+            work_limited,
+            Err(NormalizationError::WorkLimitExceeded)
+        ));
+        let depth_limited = normalize_with_mode_and_limits(
+            quads.iter().map(Quad::as_quad_ref),
+            NQuadsMode::Rdfc10,
+            NormalizationLimits {
+                max_recursion_depth: 1,
+                ..NormalizationLimits::default()
+            },
+        );
+        assert!(matches!(
+            depth_limited,
+            Err(NormalizationError::RecursionLimitExceeded)
+        ));
+    }
+
+    #[test]
+    fn legacy_normalization_preserves_literal_bytes_and_labels() {
+        let quads = [
+            literal_quad("control", "\u{1f}"),
+            literal_quad("text", "plain"),
+        ];
+        let expected = concat!(
+            "_:c14n0 <urn:p> \"plain\" .\n",
+            "_:c14n1 <urn:p> \"\u{1f}\" .\n"
+        );
+        assert_eq!(
+            normalize(quads.iter().map(Quad::as_quad_ref))
+                .unwrap()
+                .into_nquads(),
+            expected
+        );
+        assert_eq!(
+            normalize_with_mode(quads.iter().map(Quad::as_quad_ref), NQuadsMode::Legacy)
+                .unwrap()
+                .into_nquads(),
+            expected
+        );
+        assert_eq!(
+            crate::rdf::NQuadsStatement(&quads[0]).to_string(),
+            "_:control <urn:p> \"\u{1f}\" .\n"
+        );
+    }
+
+    #[test]
+    fn rdfc_canonical_nquads_literal_escaping() {
+        // https://www.w3.org/TR/rdf-canon/#canonical-quads
+        // All C0 characters, DEL, XML 1.1 exclusions, ECHAR punctuation, and
+        // representative native Unicode (including non-BMP characters).
+        let value = concat!(
+            "\u{00}\u{01}\u{02}\u{03}\u{04}\u{05}\u{06}\u{07}",
+            "\u{08}\t\n\u{0b}\u{0c}\r\u{0e}\u{0f}",
+            "\u{10}\u{11}\u{12}\u{13}\u{14}\u{15}\u{16}\u{17}",
+            "\u{18}\u{19}\u{1a}\u{1b}\u{1c}\u{1d}\u{1e}\u{1f}",
+            "\u{7f}\u{fffe}\u{ffff}\"\\/\u{85}\u{2028}é\u{1f642}\u{10ffff}"
+        );
+        let quad = literal_quad("literal", value);
+        assert_eq!(
+            [&quad].into_nquads_with_mode(NQuadsMode::Rdfc10),
+            concat!(
+                "_:literal <urn:p> \"",
+                "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007",
+                "\\b\\t\\n\\u000B\\f\\r\\u000E\\u000F",
+                "\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017",
+                "\\u0018\\u0019\\u001A\\u001B\\u001C\\u001D\\u001E\\u001F",
+                "\\u007F\\uFFFE\\uFFFF\\\"\\\\/\u{85}\u{2028}é\u{1f642}\u{10ffff}",
+                "\" .\n"
+            )
+        );
+    }
+
+    #[test]
+    fn rdfc_canonical_nquads_preserves_rdf_terms() {
+        let input = concat!(
+            "<urn:é> <urn:p> <urn:o> <urn:g> .\n",
+            "_:s <urn:p> _:o _:g .\n",
+            "_:s <urn:p> \"bonjour\\t\"@fr .\n",
+            "_:s <urn:p> \"42\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n"
+        );
+        let dataset = nquads_syntax::Document::parse_str(input, |span| span).unwrap();
+        let mut quads: Vec<_> = dataset
+            .into_value()
+            .into_iter()
+            .map(Meta::into_value)
+            .map(Quad::strip_all_but_predicate)
+            .collect();
+        quads.push(Quad(
+            rdf_types::Subject::Blank(BlankIdBuf::from_suffix("s").unwrap()),
+            iref::IriBuf::new("urn:p").unwrap(),
+            rdf_types::Object::Literal(rdf_types::Literal::TypedString(
+                "string".to_string().into(),
+                iref::IriBuf::new("http://www.w3.org/2001/XMLSchema#string").unwrap(),
+            )),
+            None,
+        ));
+        assert_eq!(
+            quads.into_nquads_with_mode(NQuadsMode::Rdfc10),
+            concat!(
+                "<urn:é> <urn:p> <urn:o> <urn:g> .\n",
+                "_:s <urn:p> \"42\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n",
+                "_:s <urn:p> \"bonjour\\t\"@fr .\n",
+                "_:s <urn:p> \"string\" .\n",
+                "_:s <urn:p> _:o _:g .\n"
+            )
+        );
+    }
 
     #[test]
     /// <https://json-ld.github.io/rdf-dataset-canonicalization/tests/>
