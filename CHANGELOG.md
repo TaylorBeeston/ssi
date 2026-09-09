@@ -22,9 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LC-2160: migrate Ed25519 to dalek 2.2 and ring 0.17, retaining seeded identities and existing verification policy; reject inconsistent public/private keys.
 - LC-2160: remove vulnerable legacy dependency branches through schema/mock upgrades and narrowly vendored CACAO/BBS packages. Vendor manifests record archive checksums, revisions, licenses, and local changes.
 - RSA 0.9.10 does not fix Marvin (RUSTSEC-2023-0071); deployment-specific risk approval remains required.
+- RDF canonicalization now returns `Result` and enforces default limits of 100,000 candidate permutations and n-degree depth 64. Callers propagate limit errors instead of producing partial output; `normalize_with_limits` and aggregate work statistics support bounded diagnostics.
+- The default canonicalization limits can reject small, highly symmetric datasets that previously completed, including during verification of previously issued credentials. A limit error means processing could not complete, not that a signature is invalid. Low-level Rust callers can choose explicit budgets with `normalize_with_limits`; linked-data-proof signing and verification use the defaults and do not expose that override through DIDKit options.
+- Canonicalization internals `NormalizationState`, `hash_first_degree_quads`, `hash_n_degree_quads`, and `hash_related_blank_node` are now private. `IdentifierIssuer::issued_identifiers_list` is also private to preserve the indexed lookup invariant; construct issuers with `IdentifierIssuer::new` and allocate identifiers with `issue_identifier` rather than constructing or mutating their internal state.
 - [e9f15ac] Restructure (#457)
 
 ### Fixed
+- Avoid eager and duplicate permutation allocation during URDNA2015 canonicalization, restore candidate pruning, cache first-degree hashes, and index identifier lookups. Correct canonical-identifier handling and blank-node quad indexing to match reference canonical output, including presentation graph containers.
 - LC-2160: use full 32-byte entropy buffers for random BBS key seeds and blinders without changing caller-seeded derivation or proof encodings.
 - [b4993a9] Fix rl2020 context filename in update script
 - [82ebcd0] Fix clear_on_drop for WASM (#451)
