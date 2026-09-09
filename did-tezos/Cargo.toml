@@ -38,4 +38,4 @@ ssi-ldp = { path = "../ssi-ldp", default-features = false, features = ["tezos"] 
 ssi-json-ld = { path = "../ssi-json-ld", default-features = false }
 ssi-tzkey = { path = "../ssi-tzkey", default-features = false }
 tokio = { version = "1.0", features = ["macros"] }
-wiremock = "0.5"
+wiremock = "0.6.5"

@@ -17,7 +17,8 @@ secp256r1 = ["p256", "rand"]
 ## enable secp384r1 (p384) keys
 secp384r1 = ["p384", "rand"]
 ## enable ed25519 (EdDSA) keys
-ed25519 = ["ed25519-dalek", "rand_old", "getrandom"]
+ed25519 = ["ed25519-dalek"]
+ed25519-dalek = ["dep:ed25519-dalek", "rand", "getrandom"]
 ## enable RSA keys
 rsa = ["dep:rsa"]
 
@@ -43,11 +44,10 @@ ssi-crypto = { path = "../ssi-crypto", version = "0.1"}
 k256 = { version = "0.11", optional = true, features = ["ecdsa"] }
 p256 = { version = "0.11", optional = true, features = ["ecdsa"] }
 p384 = { version = "0.11", optional = true, features = ["ecdsa"] }
-ring = { version = "0.16", optional = true }
+ring = { version = "0.17.14", optional = true, features = ["wasm32_unknown_unknown_js"] }
 rsa = { version = "0.9.10", optional = true }
-rand = { version = "0.8", optional = true }
-rand_old = { package = "rand", version = "0.7", optional = true }
-ed25519-dalek = { version = "1", optional = true }
+rand = { version = "0.8.8", optional = true }
+ed25519-dalek = { version = "2.2", optional = true, features = ["zeroize"] }
 lazy_static = "1.4"
 bs58 = { version = "0.4", features = ["check"], optional = true }
 blake2 = { version = "0.9", optional = true }

@@ -50,6 +50,9 @@ pub enum Error {
     /// Invalid key length
     #[error("Invalid key length: {0}")]
     InvalidKeyLength(usize),
+    /// The supplied public key does not correspond to the private seed
+    #[error("Public key does not match private key")]
+    InconsistentKey,
     /// Error parsing a key with `ring`
     #[cfg(feature = "ring")]
     #[error("{0}")]
@@ -96,16 +99,20 @@ pub enum Error {
     /// Unable to decompress elliptic curve
     #[error("Unable to decompress elliptic curve")]
     ECDecompress,
-    /// Errors from p256, k256 and ed25519-dalek
+    /// Errors from p256 and k256
     #[cfg(feature = "k256")]
     #[error(transparent)]
     CryptoErr(#[from] k256::ecdsa::Error),
     #[cfg(all(feature = "p256", not(feature = "k256")))]
     #[error(transparent)]
     CryptoErr(#[from] p256::ecdsa::Error),
-    #[cfg(all(feature = "ed25519", not(feature = "k256"), not(feature = "p256")))]
+    #[cfg(all(feature = "p384", not(any(feature = "k256", feature = "p256"))))]
     #[error(transparent)]
-    CryptoErr(#[from] ed25519_dalek::ed25519::Error),
+    CryptoErr(#[from] p384::ecdsa::Error),
+    /// Errors from ed25519-dalek (signature v2)
+    #[cfg(feature = "ed25519-dalek")]
+    #[error(transparent)]
+    Ed25519(#[from] ed25519_dalek::SignatureError),
     /// Error from `elliptic-curve` crate
     #[cfg(feature = "k256")]
     #[error(transparent)]

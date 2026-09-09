@@ -11,7 +11,7 @@ use pairing_plus::{
     serdes::SerDes,
     CurveProjective,
 };
-use rand_old::prelude::*;
+use rand::{thread_rng, CryptoRng, RngCore};
 use serde::{
     de::{SeqAccess, Visitor},
     ser::SerializeTuple,
@@ -280,22 +280,25 @@ fn bls_generate_keypair<G: CurveProjective<Engine = Bls12, Scalar = Fr> + SerDes
     seed: Option<&[u8]>,
     blinder: Option<&[u8]>,
 ) -> Result<BlsKeyPair<G>, BlsGenerateKeyPairError> {
-    let passed_seed;
+    bls_generate_keypair_with_rng(seed, blinder, &mut thread_rng())
+}
+
+fn bls_generate_keypair_with_rng<G: CurveProjective<Engine = Bls12, Scalar = Fr> + SerDes>(
+    seed: Option<&[u8]>,
+    blinder: Option<&[u8]>,
+    rng: &mut (impl RngCore + CryptoRng),
+) -> Result<BlsKeyPair<G>, BlsGenerateKeyPairError> {
+    let passed_seed = seed.is_some();
+    let mut seed_data = [0u8; 32];
     let seed = match seed {
-        Some(arg) => {
-            passed_seed = true;
-            arg.to_vec()
-        }
+        Some(seed) => seed,
         None => {
-            passed_seed = false;
-            let mut rng = thread_rng();
-            let mut seed_data = vec![0u8, 32];
-            rng.fill_bytes(seed_data.as_mut_slice());
-            seed_data
+            rng.fill_bytes(&mut seed_data);
+            &seed_data
         }
     };
 
-    let sk = gen_sk(seed.as_slice());
+    let sk = gen_sk(seed);
     let mut pk = G::one();
     pk.mul_assign(sk);
 
@@ -304,12 +307,11 @@ fn bls_generate_keypair<G: CurveProjective<Engine = Bls12, Scalar = Fr> + SerDes
             let mut data = g.to_vec();
             let mut gg = g;
             if passed_seed {
-                data.extend_from_slice(seed.as_slice());
+                data.extend_from_slice(seed);
             } else {
-                let mut rng = thread_rng();
-                let mut blinding_factor = vec![0u8, 32];
-                rng.fill_bytes(blinding_factor.as_mut_slice());
-                data.extend_from_slice(blinding_factor.as_slice());
+                let mut blinding_factor = [0u8; 32];
+                rng.fill_bytes(&mut blinding_factor);
+                data.extend_from_slice(&blinding_factor);
             }
             let mut blinding_g = G::deserialize(&mut gg, true)
                 .map_err(BlsGenerateKeyPairError::DeserializeBlinder)?;
@@ -343,4 +345,38 @@ fn gen_sk(msg: &[u8]) -> Fr {
             .is_ok()
     );
     Fr::from_okm(&result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    fn random_keypair_uses_full_seed_and_blinder_entropy() {
+        let mut rng = StdRng::from_seed([42; 32]);
+        let mut expected_rng = rng.clone();
+        let mut seed = [0u8; 32];
+        let mut blinding_seed = [0u8; 32];
+        expected_rng.fill_bytes(&mut seed);
+        expected_rng.fill_bytes(&mut blinding_seed);
+
+        let actual =
+            bls_generate_keypair_with_rng::<G2>(None, Some(BLINDING_G2), &mut rng).unwrap();
+        let expected_key = BlsKeyPair::<G2>::new(Some(&seed), None).unwrap();
+        let expected_blinding =
+            BlsKeyPair::<G2>::new(Some(&blinding_seed), Some(BLINDING_G2)).unwrap();
+
+        // Compare derived scalars, not just the number of bytes requested from the RNG.
+        // Truncating either entropy buffer must change its deterministic derivation.
+        assert_eq!(actual.secret_key.0, expected_key.secret_key.0);
+        assert_eq!(actual.blinder, expected_blinding.blinder);
+
+        let mut blinding_bytes = BLINDING_G2;
+        let mut blinding_g = G2::deserialize(&mut blinding_bytes, true).unwrap();
+        blinding_g.mul_assign(expected_blinding.blinder.unwrap());
+        let mut expected_public = expected_key.public_key.0;
+        expected_public.add_assign(&blinding_g);
+        assert_eq!(actual.public_key.0, expected_public);
+    }
 }
