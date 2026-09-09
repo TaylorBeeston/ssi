@@ -52,15 +52,14 @@ impl FromStr for Prefix {
     }
 }
 
-impl ToString for Prefix {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for Prefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
             Prefix::TZ1 => "tz1",
             Prefix::TZ2 => "tz2",
             Prefix::TZ3 => "tz3",
             Prefix::KT1 => "KT1",
-        }
-        .to_string()
+        })
     }
 }
 
@@ -318,10 +317,8 @@ fn get_public_key_from_doc(doc: &Document, auth_vm_id: &str) -> Option<String> {
         for vm in vms {
             #[allow(clippy::single_match)]
             match vm {
-                VerificationMethod::Map(vmm) => {
-                    if vmm.id == auth_vm_id {
-                        return vmm.public_key_base58.clone();
-                    }
+                VerificationMethod::Map(vmm) if vmm.id == auth_vm_id => {
+                    return vmm.public_key_base58.clone();
                 }
                 // TODO, derefencing
                 _ => {}
@@ -532,7 +529,7 @@ impl DIDTz {
                                 })?
                             }
                             #[allow(unreachable_patterns)]
-                            p => return Err(anyhow!("{} support not enabled.", p.to_string())),
+                            p => return Err(anyhow!("{} support not enabled.", p)),
                         };
                         let (_, patch_) = decode_verify(&jws, &jwk)?;
                         patch(

@@ -251,7 +251,7 @@ where
             normalization_state
                 .blank_node_to_quads
                 .entry(identifier)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(quad);
         }
     }
@@ -265,7 +265,7 @@ where
             .insert(identifier, hash.clone());
         hash_to_blank_nodes
             .entry(hash)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(identifier);
     }
     // First-degree hashes never change when identifiers are issued, so one pass suffices.
@@ -425,7 +425,7 @@ fn hash_n_degree_quads<'a>(
                     );
                     hash_to_related_blank_nodes
                         .entry(hash)
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push(component);
                 }
             }

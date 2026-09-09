@@ -94,7 +94,7 @@ impl FromStr for ProofSuiteType {
     type Err = serde_json::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        serde_json::from_value(json!(format!("{s}")))
+        serde_json::from_value(json!(s.to_string()))
     }
 }
 

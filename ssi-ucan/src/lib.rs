@@ -38,17 +38,12 @@ pub struct Ucan<F = JsonValue, A = JsonValue> {
     codec: UcanCodec,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Default, PartialEq, Debug)]
 enum UcanCodec {
     // maintain serialization
     Raw(String),
+    #[default]
     DagJson,
-}
-
-impl Default for UcanCodec {
-    fn default() -> Self {
-        Self::DagJson
-    }
 }
 
 impl<F, A> Ucan<F, A> {
@@ -398,7 +393,8 @@ pub struct Capability<A = JsonValue> {
 }
 
 fn now() -> f64 {
-    (chrono::prelude::Utc::now().timestamp_nanos() as f64) / 1e+9_f64
+    let now = chrono::prelude::Utc::now();
+    now.timestamp() as f64 + now.timestamp_subsec_nanos() as f64 / 1e+9_f64
 }
 
 #[serde_as]
@@ -655,12 +651,23 @@ mod tests {
         let cases: Vec<InvalidTestVector> =
             serde_json::from_str(include_str!("../../tests/ucan-v0.9.0-invalid.json")).unwrap();
         for case in cases {
-            match Ucan::<JsonValue>::decode(&case.token) {
+            let InvalidTestVector {
+                comment,
+                token,
+                assertions,
+            } = case;
+            let _expected_failures = (
+                assertions.header,
+                assertions.payload,
+                assertions.type_errors,
+                assertions.validation_errors,
+            );
+            match Ucan::<JsonValue>::decode(&token) {
                 Ok(u) => {
                     if u.payload.validate_time(None).is_ok()
                         && u.verify_signature(DIDKey.to_resolver()).await.is_ok()
                     {
-                        assert!(false, "{}", case.comment);
+                        assert!(false, "{}", comment);
                     }
                 }
                 Err(_e) => {}

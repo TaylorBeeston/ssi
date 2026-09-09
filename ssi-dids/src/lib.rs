@@ -37,22 +37,17 @@ use ssi_jwk::JWK;
 /// The relationship between a [verification method][VerificationMethod] and a DID
 /// Subject (as described by a [DID Document][Document]) is considered analogous to a [proof
 /// purpose](crate::vc::ProofPurpose).
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(try_from = "String")]
 #[serde(rename_all = "camelCase")]
 pub enum VerificationRelationship {
+    #[default]
     AssertionMethod,
     Authentication,
     KeyAgreement,
     ContractAgreement,
     CapabilityInvocation,
     CapabilityDelegation,
-}
-
-impl Default for VerificationRelationship {
-    fn default() -> Self {
-        Self::AssertionMethod
-    }
 }
 
 impl FromStr for VerificationRelationship {
@@ -704,10 +699,7 @@ impl<'a> DIDMethods<'a> {
         };
         let mut parts = pattern.splitn(2, ':');
         let method_name = parts.next().unwrap();
-        let method = match self.methods.get(method_name) {
-            Some(method) => method,
-            None => return None,
-        };
+        let method = self.methods.get(method_name)?;
         if let Some(method_pattern) = parts.next() {
             let source = Source::KeyAndPattern(jwk, method_pattern);
             method.generate(&source)
@@ -1283,7 +1275,7 @@ impl Document {
     pub fn select_object(&self, id: &DIDURL) -> Result<Resource, Error> {
         let id_string = String::from(id.clone());
         let id_relative_string_opt = id.to_relative(&self.id).map(|rel_url| rel_url.to_string());
-        for vm in vec![
+        for vm in [
             &self.verification_method,
             &self.authentication,
             &self.assertion_method,

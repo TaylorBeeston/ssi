@@ -231,7 +231,7 @@ pub struct Prime {
 pub struct Base64urlUInt(pub Vec<u8>);
 type Base64urlUIntString = String;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Hash, Eq)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Hash, Eq)]
 pub enum Algorithm {
     HS256,
     HS384,
@@ -251,21 +251,16 @@ pub enum Algorithm {
     #[serde(rename = "ES256K-R")]
     ES256KR,
     /// like ES256K-R but using Keccak-256 instead of SHA-256
-    #[serde(rename = "ES256K-R")]
+    #[serde(rename = "ES256K-R", skip_deserializing)]
     ESKeccakKR,
     ESBlake2b,
     ESBlake2bK,
     #[doc(hidden)]
     AleoTestnet1Signature,
     // Per the specs it should only be `none` but `None` is kept for backwards compatibility
+    #[default]
     #[serde(rename = "none", alias = "None")]
     None,
-}
-
-impl Default for Algorithm {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl JWK {
@@ -409,10 +404,7 @@ impl JWK {
                 return Some(Algorithm::AleoTestnet1Signature);
             }
             Params::EC(ec_params) => {
-                let curve = match &ec_params.curve {
-                    Some(curve) => curve,
-                    None => return None,
-                };
+                let curve = ec_params.curve.as_ref()?;
                 match &curve[..] {
                     "secp256k1" => {
                         return Some(Algorithm::ES256K);
@@ -548,7 +540,7 @@ impl JWK {
             }
             "Multikey" => match multicodec::decode(&pk_bytes) {
                 Ok((codec, pk)) => match codec {
-                    #[cfg(any(feature = "ed25519"))]
+                    #[cfg(feature = "ed25519")]
                     multicodec::Codec::Ed25519Pub => ed25519_parse(&pk),
                     #[cfg(feature = "secp256k1")]
                     multicodec::Codec::Secp256k1Pub => secp256k1_parse(&pk),
@@ -568,9 +560,9 @@ impl JWK {
         let bytes = multibase::decode(multicodec)?.1;
         match multicodec::decode(&bytes) {
             Ok((codec, k)) => match codec {
-                #[cfg(any(feature = "ed25519"))]
+                #[cfg(feature = "ed25519")]
                 multicodec::Codec::Ed25519Pub => ed25519_parse(&k),
-                #[cfg(any(feature = "ed25519"))]
+                #[cfg(feature = "ed25519")]
                 multicodec::Codec::Ed25519Priv => ed25519_parse_private(&k),
                 #[cfg(feature = "secp256k1")]
                 multicodec::Codec::Secp256k1Pub => secp256k1_parse(&k),
@@ -816,7 +808,7 @@ impl TryFrom<&RSAParams> for rsa::RsaPrivateKey {
         for prime in params.other_primes_info.iter().flatten() {
             primes.push((&prime.prime_factor).into());
         }
-        Ok(Self::from_components(n.into(), e.into(), d.into(), primes))
+        Ok(Self::from_components(n.into(), e.into(), d.into(), primes)?)
     }
 }
 
@@ -1051,13 +1043,17 @@ pub fn serialize_secp256k1(params: &ECParams) -> Result<Vec<u8>, Error> {
 pub fn serialize_p256(params: &ECParams) -> Result<Vec<u8>, Error> {
     // TODO: check that curve is P-256
     use p256::elliptic_curve::{sec1::EncodedPoint, FieldBytes};
-    let x = FieldBytes::<p256::NistP256>::from_slice(
-        &params.x_coordinate.as_ref().ok_or(Error::MissingPoint)?.0,
+    let x_bytes = &params.x_coordinate.as_ref().ok_or(Error::MissingPoint)?.0;
+    let x = FieldBytes::<p256::NistP256>::from(
+        <[u8; 32]>::try_from(x_bytes.as_slice())
+            .map_err(|_| Error::InvalidKeyLength(x_bytes.len()))?,
     );
-    let y = FieldBytes::<p256::NistP256>::from_slice(
-        &params.y_coordinate.as_ref().ok_or(Error::MissingPoint)?.0,
+    let y_bytes = &params.y_coordinate.as_ref().ok_or(Error::MissingPoint)?.0;
+    let y = FieldBytes::<p256::NistP256>::from(
+        <[u8; 32]>::try_from(y_bytes.as_slice())
+            .map_err(|_| Error::InvalidKeyLength(y_bytes.len()))?,
     );
-    let encoded_point = EncodedPoint::<p256::NistP256>::from_affine_coordinates(x, y, true);
+    let encoded_point = EncodedPoint::<p256::NistP256>::from_affine_coordinates(&x, &y, true);
     let pk_compressed_bytes = encoded_point.to_bytes();
     Ok(pk_compressed_bytes.to_vec())
 }
@@ -1067,13 +1063,17 @@ pub fn serialize_p256(params: &ECParams) -> Result<Vec<u8>, Error> {
 pub fn serialize_p384(params: &ECParams) -> Result<Vec<u8>, Error> {
     // TODO: check that curve is P-384
     use p384::elliptic_curve::{sec1::EncodedPoint, FieldBytes};
-    let x = FieldBytes::<p384::NistP384>::from_slice(
-        &params.x_coordinate.as_ref().ok_or(Error::MissingPoint)?.0,
+    let x_bytes = &params.x_coordinate.as_ref().ok_or(Error::MissingPoint)?.0;
+    let x = FieldBytes::<p384::NistP384>::from(
+        <[u8; 48]>::try_from(x_bytes.as_slice())
+            .map_err(|_| Error::InvalidKeyLength(x_bytes.len()))?,
     );
-    let y = FieldBytes::<p384::NistP384>::from_slice(
-        &params.y_coordinate.as_ref().ok_or(Error::MissingPoint)?.0,
+    let y_bytes = &params.y_coordinate.as_ref().ok_or(Error::MissingPoint)?.0;
+    let y = FieldBytes::<p384::NistP384>::from(
+        <[u8; 48]>::try_from(y_bytes.as_slice())
+            .map_err(|_| Error::InvalidKeyLength(y_bytes.len()))?,
     );
-    let encoded_point = EncodedPoint::<p384::NistP384>::from_affine_coordinates(x, y, true);
+    let encoded_point = EncodedPoint::<p384::NistP384>::from_affine_coordinates(&x, &y, true);
     let pk_compressed_bytes = encoded_point.to_bytes();
     Ok(pk_compressed_bytes.to_vec())
 }
@@ -1361,11 +1361,11 @@ impl From<Base64urlUInt> for Base64urlUIntString {
 mod tests {
     use super::*;
 
-    const RSA_JSON: &'static str = include_str!("../../tests/rsa2048-2020-08-25.json");
-    const RSA_DER: &'static [u8] = include_bytes!("../../tests/rsa2048-2020-08-25.der");
-    const RSA_PK_DER: &'static [u8] = include_bytes!("../../tests/rsa2048-2020-08-25-pk.der");
-    const ED25519_JSON: &'static str = include_str!("../../tests/ed25519-2020-10-18.json");
-    const ED25519_A32_JSON: &'static str = include_str!("../../tests/ed25519-a32.json");
+    const RSA_JSON: &str = include_str!("../../tests/rsa2048-2020-08-25.json");
+    const RSA_DER: &[u8] = include_bytes!("../../tests/rsa2048-2020-08-25.der");
+    const RSA_PK_DER: &[u8] = include_bytes!("../../tests/rsa2048-2020-08-25-pk.der");
+    const ED25519_JSON: &str = include_str!("../../tests/ed25519-2020-10-18.json");
+    const ED25519_A32_JSON: &str = include_str!("../../tests/ed25519-a32.json");
 
     #[test]
     fn jwk_to_from_der_rsa() {
@@ -1394,6 +1394,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ed25519")]
     fn generate_ed25519_from_bytes() {
         let a32: JWK = serde_json::from_str(ED25519_A32_JSON).unwrap();
         let byte_string = "a".repeat(32);
@@ -1402,6 +1403,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ed25519")]
     fn generate_ed25519_from_bytes_checks_length() {
         let byte_string = "a".repeat(33);
         let error = JWK::generate_ed25519_from_bytes(byte_string.as_bytes());

@@ -130,7 +130,7 @@ pub struct ResolutionMetadata {
 /// - in [DID Core](https://www.w3.org/TR/did-core/#dfn-diddocumentmetadata)
 /// - in [DID Resolution](https://w3c-ccg.github.io/did-resolution/#output-documentmetadata)
 /// - in [DID Specification
-/// Registries](https://www.w3.org/TR/did-spec-registries/#did-document-metadata)
+///   Registries](https://www.w3.org/TR/did-spec-registries/#did-document-metadata)
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentMetadata {
@@ -209,9 +209,12 @@ pub enum Content {
 }
 
 #[cfg(feature = "http")]
-fn get_first_context_uri(value: &Value) -> Option<iref::IriRef> {
+fn get_first_context_uri(value: &Value) -> Option<iref::IriRef<'_>> {
     match value.get("@context")? {
-        Value::Array(vec) => vec.get(0)?.as_str().and_then(|v| iref::IriRef::new(v).ok()),
+        Value::Array(vec) => vec
+            .first()?
+            .as_str()
+            .and_then(|v| iref::IriRef::new(v).ok()),
         Value::String(string) => iref::IriRef::new(string).ok(),
         _ => None,
     }
@@ -1238,7 +1241,7 @@ impl DIDResolver for HTTPDIDResolver {
 #[derive(Clone, Default)]
 pub struct SeriesResolver<'a> {
     /// Underlying DID resolvers.
-    pub resolvers: Vec<&'a (dyn DIDResolver)>,
+    pub resolvers: Vec<&'a dyn DIDResolver>,
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
@@ -1389,12 +1392,12 @@ pub async fn get_verification_methods_for_all(
         for vm in doc
             .verification_method
             .into_iter()
-            .chain(doc.public_key.into_iter())
-            .chain(doc.authentication.into_iter())
-            .chain(doc.assertion_method.into_iter())
-            .chain(doc.key_agreement.into_iter())
-            .chain(doc.capability_invocation.into_iter())
-            .chain(doc.capability_delegation.into_iter())
+            .chain(doc.public_key)
+            .chain(doc.authentication)
+            .chain(doc.assertion_method)
+            .chain(doc.key_agreement)
+            .chain(doc.capability_invocation)
+            .chain(doc.capability_delegation)
             .flatten()
         {
             if let VerificationMethod::Map(mut vmm) = vm {
@@ -1621,9 +1624,10 @@ mod tests {
                 if id == DID_KEY_ID {
                     let body = Body::from(DID_KEY_JSON);
                     let mut response = Response::new(body);
-                    response
-                        .headers_mut()
-                        .insert(header::CONTENT_TYPE, TYPE_DID_RESOLUTION.parse().unwrap());
+                    response.headers_mut().insert(
+                        hyper::header::CONTENT_TYPE,
+                        TYPE_DID_RESOLUTION.parse().unwrap(),
+                    );
                     return Ok::<_, hyper::Error>(response);
                 }
 
@@ -1633,11 +1637,12 @@ mod tests {
                     resolver.resolve(&id, &res_input_meta).await;
                 let (mut parts, _) = Response::<Body>::default().into_parts();
                 if res_meta.error == Some(ERROR_NOT_FOUND.to_string()) {
-                    parts.status = StatusCode::NOT_FOUND;
+                    parts.status = hyper::StatusCode::NOT_FOUND;
                 }
-                parts
-                    .headers
-                    .insert(header::CONTENT_TYPE, TYPE_DID_RESOLUTION.parse().unwrap());
+                parts.headers.insert(
+                    hyper::header::CONTENT_TYPE,
+                    TYPE_DID_RESOLUTION.parse().unwrap(),
+                );
                 let result = ResolutionResult {
                     did_document: doc_opt,
                     did_resolution_metadata: Some(res_meta),

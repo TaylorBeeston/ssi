@@ -19,8 +19,10 @@ thread_local! {
   static PROXY: RefCell<Option<String>> = RefCell::new(None);
 }
 
+type CachedResolution = (ResolutionMetadata, Vec<u8>, Option<DocumentMetadata>);
+
 lazy_static::lazy_static! {
-    static ref CACHE: Mutex<TimedCache<String, (ResolutionMetadata, Vec<u8>, Option<DocumentMetadata>)>> = Mutex::new(TimedCache::with_lifespan(10));
+    static ref CACHE: Mutex<TimedCache<String, CachedResolution>> = Mutex::new(TimedCache::with_lifespan(10));
 }
 
 /// did:web Method

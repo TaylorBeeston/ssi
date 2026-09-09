@@ -367,10 +367,7 @@ impl DIDMethod for DIDKey {
                 }
             }
             Params::EC(ref params) => {
-                let curve = match params.curve {
-                    Some(ref curve) => curve,
-                    None => return None,
-                };
+                let curve = params.curve.as_ref()?;
                 match &curve[..] {
                     #[cfg(feature = "secp256k1")]
                     "secp256k1" => {

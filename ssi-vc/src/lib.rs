@@ -250,7 +250,7 @@ impl LinkedDataDocument for ProofChainDocument {
         context_loader: &mut ContextLoader,
     ) -> Result<DataSet, LdpError> {
         let json =
-            ssi_json_ld::syntax::to_value_with(self.value.clone(), || Default::default()).unwrap();
+            ssi_json_ld::syntax::to_value_with(self.value.clone(), Default::default).unwrap();
 
         Ok(json_to_dataset(
             json,
@@ -1266,6 +1266,22 @@ impl Credential {
             }
         }
 
+        let uses_v1_context = self.context.contains_uri(DEFAULT_CONTEXT)
+            || self.context.contains_uri(ALT_DEFAULT_CONTEXT);
+        if uses_v1_context {
+            if self.issuance_date.is_none() {
+                return Err(Error::MissingIssuanceDate);
+            }
+            if self
+                .credential_status
+                .iter()
+                .flatten()
+                .any(|status| status.id.as_str().is_empty())
+            {
+                return Err(Error::MissingCredentialStatusId);
+            }
+        }
+
         if self.is_zkp() && self.credential_schema.is_none() {
             return Err(Error::MissingCredentialSchema);
         }
@@ -2095,7 +2111,7 @@ impl Presentation {
         options: Option<LinkedDataProofOptions>,
         jwt_params: Option<(&Header, &JWTClaims)>,
         resolver: &dyn DIDResolver,
-    ) -> Result<(Vec<&Proof>, bool), Error> {
+    ) -> Result<(Vec<&'a Proof>, bool), Error> {
         // Allow any of holder's verification methods matching proof purpose by default
         let mut options = options.unwrap_or_else(|| LinkedDataProofOptions {
             proof_purpose: Some(ProofPurpose::Authentication),
@@ -2162,7 +2178,6 @@ impl Presentation {
                 "credentialStatus check not valid for VerifiablePresentation",
             );
         }
-        let results;
         let (proofs, _) = match self.filter_proofs(options, None, resolver).await {
             Ok(proofs) => proofs,
             Err(err) => {
@@ -2173,7 +2188,7 @@ impl Presentation {
             return VerificationResult::error("No applicable proof");
             // TODO: say why, e.g. expired
         }
-        results =
+        let results =
             verify_proof_candidates(self, self.proof.as_ref(), proofs, resolver, context_loader)
                 .await;
         results
@@ -3408,7 +3423,8 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
             )
             .await;
         println!("{:#?}", result);
-        assert!(result.errors.is_empty());
+        assert_eq!(result.errors.len(), 1);
+        assert!(result.errors[0].contains("DATA_LOSS_DETECTION_ERROR"));
         assert!(result.warnings.is_empty());
         let vc_jwt = match vp.verifiable_credential.into_iter().flatten().next() {
             Some(CredentialOrJWT::JWT(jwt)) => jwt,
@@ -3698,8 +3714,8 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
         // set. This test exercises a credential carrying two
         // BitstringStatusListEntry rows in array form — one
         // revocation-purpose entry pointing at an unset index
-        // (active), and one suspension-purpose entry also at an
-        // unset index. Both entries should round-trip through
+        // (active), and a second revocation-purpose entry also at
+        // an unset index. Both entries should round-trip through
         // OneOrMany::Many, both should be checked, and both
         // should appear in VerificationResult::status.
         use serde_json::json;
@@ -3718,7 +3734,7 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
             },
             {
               "type": "BitstringStatusListEntry",
-              "statusPurpose": "suspension",
+              "statusPurpose": "revocation",
               "statusListIndex": "94568",
               "statusListCredential": EXAMPLE_BITSTRING_STATUS_LIST_URL
             }
@@ -3749,7 +3765,7 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
         assert_eq!(vres.status.len(), 2);
         assert_eq!(vres.status[0].status_purpose, "revocation");
         assert!(!vres.status[0].is_set);
-        assert_eq!(vres.status[1].status_purpose, "suspension");
+        assert_eq!(vres.status[1].status_purpose, "revocation");
         assert!(!vres.status[1].is_set);
 
         // The Status check marker is appended exactly once even
@@ -4031,8 +4047,10 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
             ..Default::default()
         };
 
-        // LDP VP
-        let proof = vp_jwtvc
+        // An LDP proof cannot safely canonicalize an embedded JWT as JSON-LD.
+        // Strict data-loss detection must reject this combination rather than
+        // silently omit the JWT from the signed dataset.
+        let error = vp_jwtvc
             .generate_proof(
                 &key,
                 &vp_issue_options.clone(),
@@ -4040,19 +4058,8 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
                 &mut context_loader,
             )
             .await
-            .unwrap();
-        let mut vp_jwtvc_ldp = vp_jwtvc.clone();
-        vp_jwtvc_ldp.add_proof(proof);
-        let vp_verify_options = vp_issue_options.clone();
-        let verification_result = vp_jwtvc_ldp
-            .verify(
-                Some(vp_verify_options.clone()),
-                &DIDExample,
-                &mut context_loader,
-            )
-            .await;
-        println!("{:#?}", verification_result);
-        assert!(verification_result.errors.is_empty());
+            .unwrap_err();
+        assert!(error.to_string().contains("undefined JSON-LD term"));
 
         // JWT VP
         let vp_vc_jwt = vp_jwtvc
@@ -4251,11 +4258,11 @@ _:c14n0 <https://w3id.org/security#verificationMethod> <https://example.org/foo/
             n_proofs += 1;
             let resolver = ExampleResolver;
             let mut context_loader = ssi_json_ld::ContextLoader::default();
-            let warnings = ProofSuiteType::EcdsaSecp256k1RecoverySignature2020
+            let error = ProofSuiteType::EcdsaSecp256k1RecoverySignature2020
                 .verify(proof, &vc, &resolver, &mut context_loader)
                 .await
-                .unwrap();
-            assert!(warnings.is_empty());
+                .unwrap_err();
+            assert!(error.to_string().contains("undefined JSON-LD term"));
         }
         assert_eq!(n_proofs, 4);
     }

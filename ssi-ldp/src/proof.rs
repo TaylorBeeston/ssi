@@ -1,8 +1,6 @@
 use std::collections::HashMap as Map;
 use std::{convert::TryFrom, str::FromStr};
 
-use chrono::prelude::*;
-
 use crate::dataintegrity::DataIntegrityCryptoSuite;
 
 use super::*;
@@ -54,7 +52,7 @@ pub struct Proof {
     // but all examples use a single string.
     pub verification_method: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub created: Option<DateTime<Utc>>, // ISO 8601
+    pub created: Option<chrono::DateTime<chrono::Utc>>, // ISO 8601
     #[serde(skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -255,7 +253,7 @@ pub struct LinkedDataProofOptions {
     pub proof_purpose: Option<ProofPurpose>,
     #[serde(skip_serializing_if = "Option::is_none")]
     /// The date of the proof. If omitted system time will be used.
-    pub created: Option<DateTime<Utc>>,
+    pub created: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     /// The challenge of the proof.
     pub challenge: Option<String>,
@@ -775,7 +773,7 @@ trait ProofGraph:
         &mut self,
         s: &Self::Subject,
         p: Iri,
-        expected_o: Option<&DateTime<Utc>>,
+        expected_o: Option<&chrono::DateTime<chrono::Utc>>,
     ) -> Result<(), Box<ProofInconsistency>>;
 
     /// When `expected_o` is `Some(str)`.
@@ -839,13 +837,13 @@ impl ProofGraph for grdf::HashGraph<rdf_types::Subject, IriBuf, rdf_types::Objec
         &mut self,
         s: &Self::Subject,
         p: Iri,
-        expected_o: Option<&DateTime<Utc>>,
+        expected_o: Option<&chrono::DateTime<chrono::Utc>>,
     ) -> Result<(), Box<ProofInconsistency>> {
         self.take_object_and_assert_eq(s, p, expected_o, |o, expected| match o {
             rdf_types::Object::Literal(rdf_types::Literal::TypedString(date, ty))
                 if *ty == iri!("http://www.w3.org/2001/XMLSchema#dateTime") =>
             {
-                match DateTime::parse_from_rfc3339(date.as_str()) {
+                match chrono::DateTime::parse_from_rfc3339(date.as_str()) {
                     Ok(date) => date == **expected,
                     _ => false,
                 }

@@ -23,7 +23,7 @@ derive_builder = "0.9"
 bs58 = { version = "0.4", features = ["check"] }
 hex = "0.4"
 multibase = "0.8"
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"], optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = true }
 percent-encoding = { version = "2.1", optional = true }
 iref = { version = "2.2.2", features = ["serde"] }
 static-iref = "2.0.0"
@@ -48,6 +48,7 @@ hyper = { version = "0.14", features = [
     "client",
     "http1",
     "stream",
+    "tcp",
 ] }
 ssi-jwk = { path = "../ssi-jwk", version = "0.1", default-features = false, features = ["secp256k1", "ed25519"] }
 
