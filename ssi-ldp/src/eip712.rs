@@ -117,6 +117,8 @@ pub enum TypedDataConstructionError {
     DocumentToDataset(String),
     #[error("Unable to convert proof to data set: {0}")]
     ProofToDataset(String),
+    #[error(transparent)]
+    Normalization(#[from] crate::urdna2015::NormalizationError),
 }
 
 #[derive(Error, Debug)]
@@ -707,7 +709,7 @@ impl TypedData {
             .await
             .map_err(|e| TypedDataConstructionError::DocumentToDataset(e.to_string()))?;
         let doc_dataset_normalized =
-            crate::urdna2015::normalize(doc_dataset.quads().map(QuadRef::from));
+            crate::urdna2015::normalize(doc_dataset.quads().map(QuadRef::from))?;
         let mut doc_statements_normalized: Vec<_> = doc_dataset_normalized.collect();
         #[allow(clippy::redundant_closure)]
         doc_statements_normalized.sort_by_cached_key(|x| NQuadsStatement(x).to_string());
@@ -716,7 +718,7 @@ impl TypedData {
             .await
             .map_err(|e| TypedDataConstructionError::ProofToDataset(e.to_string()))?;
         let sigopts_dataset_normalized =
-            crate::urdna2015::normalize(sigopts_dataset.quads().map(QuadRef::from));
+            crate::urdna2015::normalize(sigopts_dataset.quads().map(QuadRef::from))?;
         let mut sigopts_statements_normalized: Vec<_> = sigopts_dataset_normalized.collect();
         #[allow(clippy::redundant_closure)]
         sigopts_statements_normalized.sort_by_cached_key(|x| NQuadsStatement(x).to_string());

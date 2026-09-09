@@ -188,10 +188,10 @@ async fn micheline_from_document_and_options(
     let doc_dataset = document
         .to_dataset_for_signing(None, context_loader)
         .await?;
-    let doc_dataset_normalized = urdna2015::normalize(doc_dataset.quads().map(QuadRef::from));
+    let doc_dataset_normalized = urdna2015::normalize(doc_dataset.quads().map(QuadRef::from))?;
     let doc_normalized = doc_dataset_normalized.into_nquads();
     let sigopts_dataset_normalized =
-        urdna2015::normalize(sigopts_dataset.quads().map(QuadRef::from));
+        urdna2015::normalize(sigopts_dataset.quads().map(QuadRef::from))?;
     let sigopts_normalized = sigopts_dataset_normalized.into_nquads();
     let msg = ["", &sigopts_normalized, &doc_normalized].join("\n");
     let data = ssi_tzkey::encode_tezos_signed_message(&msg)?;
